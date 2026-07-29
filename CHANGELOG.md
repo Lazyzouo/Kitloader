@@ -4,6 +4,30 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.7] - 2026-07-29
+
+### Changed
+
+- Kitloader's main GUI, `/inv`, and `/regear` click and drag handlers now run at the final mutable event priority, receive previously cancelled interactions, and resolve top/bottom inventory targets from the raw slot and server `InventoryView`.
+- Editable slots explicitly restore native mouse, number-key, Shift-click, and drag transactions. Protected toolbars, confirmation pages, and restricted slots remain cancelled.
+
+### Fixed
+
+- Moving or jumping can no longer leave page arrows, refresh buttons, category controls, or other GUI actions visually clicked without executing their corresponding operation.
+- Shift transfers and template claims now read their source stack from the server inventory view, avoiding null or stale event snapshots while preserving the 1.4.1 native pickup transaction and one-tick duplicate-claim lock.
+
+## [2.0.7] - 2026-07-29（中文）
+
+### 变更
+
+- Kitloader 主界面、`/inv` 与 `/regear` 的点击和拖动监听现统一在最终可修改事件优先级执行，接收此前已取消的交互，并通过原始槽位与服务端 `InventoryView` 判断上下层库存。
+- 可编辑槽位会显式恢复鼠标、数字键、Shift 点击和拖动的原生事务；受保护工具栏、确认页面及受限槽位仍保持取消。
+
+### 修复
+
+- 玩家移动或跳跃时，翻页、刷新、分类及其他 GUI 按键不再出现客户端已点击、对应操作却没有执行的情况。
+- Shift 转移与模板领取会从服务端库存视图读取来源物品，避免事件快照为空或过期；同时保留 1.4.1 的原生领取事务与一刻防重复领取锁。
+
 ## [2.0.6] - 2026-07-29
 
 ### Changed

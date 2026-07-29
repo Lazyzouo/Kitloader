@@ -9,6 +9,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -298,14 +299,17 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         return button(Material.BLACK_STAINED_GLASS_PANE, "&7");
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player admin)) return;
         InventoryHolder holder = event.getView().getTopInventory().getHolder();
+        boolean topInventoryClick = InventoryClickResolver.isTopClick(event);
+        boolean bottomInventoryClick = InventoryClickResolver.isBottomClick(event);
+        ItemStack clickedItem = InventoryClickResolver.clickedItem(event);
 
         if (holder instanceof PlayerListHolder listHolder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != event.getView().getTopInventory()) return;
+            if (!topInventoryClick) return;
             int slot = event.getRawSlot();
             if (slot >= 0 && slot < listHolder.targets.size()) {
                 Player target = Bukkit.getPlayer(listHolder.targets.get(slot));
@@ -315,11 +319,11 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
                 } else {
                     beginSession(admin, target, listHolder.page);
                 }
-            } else if (slot == 45 && event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.ARROW) {
+            } else if (slot == 45 && clickedItem != null && clickedItem.getType() == Material.ARROW) {
                 openPlayerList(admin, listHolder.page - 1);
-            } else if (slot == 49 && event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.IRON_DOOR) {
+            } else if (slot == 49 && clickedItem != null && clickedItem.getType() == Material.IRON_DOOR) {
                 admin.closeInventory();
-            } else if (slot == 53 && event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.ARROW) {
+            } else if (slot == 53 && clickedItem != null && clickedItem.getType() == Material.ARROW) {
                 openPlayerList(admin, listHolder.page + 1);
             }
             return;
@@ -333,14 +337,13 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         }
 
         int rawSlot = event.getRawSlot();
-        int topSize = event.getView().getTopInventory().getSize();
         if (rawSlot < 0 || event.getClick() == ClickType.DROP || event.getClick() == ClickType.CONTROL_DROP
                 || event.getClick() == ClickType.DOUBLE_CLICK) {
             event.setCancelled(true);
             return;
         }
 
-        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+        if (topInventoryClick) {
             if (rawSlot == SAVE_EXIT_SLOT || rawSlot == DISCARD_EXIT_SLOT
                     || rawSlot == SWITCH_VIEW_SLOT || rawSlot == DISCARD_RETURN_SLOT) {
                 event.setCancelled(true);
@@ -352,16 +355,17 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
                 event.setCancelled(true);
                 return;
             }
-        } else if (rawSlot < topSize) {
+        } else if (!bottomInventoryClick) {
             event.setCancelled(true);
             return;
         }
 
+        event.setCancelled(false);
         markAdminInteraction(session, editorHolder.view);
         scheduleCapture(admin, session, editorHolder);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player admin)) return;
         if (!(event.getView().getTopInventory().getHolder() instanceof EditorHolder holder)) return;
@@ -380,6 +384,7 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         }
         markAdminInteraction(session, holder.view);
         scheduleCapture(admin, session, holder);
+        event.setCancelled(false);
     }
 
     @EventHandler
