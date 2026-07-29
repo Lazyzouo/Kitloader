@@ -200,6 +200,7 @@ public class GuiManager {
         int removedItems = 0;
         int removedSupplies = 0;
         boolean changed = false;
+        int renamedNames = 0;
         synchronized (uploadedSupplyLock) {
             uploadedSupplyRecords.clear();
             ConfigurationSection section = guiConfig.getConfigurationSection("uploaded_supplies");
@@ -226,12 +227,21 @@ public class GuiManager {
                         changed = true;
                         continue;
                     }
-                    if (SupplyContentPolicy.validateSupply(cleanItem)
+                    if (SupplyContentPolicy.validateSupply(plugin, cleanItem)
                             != SupplyContentPolicy.ValidationResult.VALID) {
                         changed = true;
                         removedSupplies++;
                         continue;
                     }
+                    ItemMeta cleanMeta = cleanItem.getItemMeta();
+                    if (cleanMeta != null && cleanMeta.hasDisplayName()
+                            && !CustomNamePolicy.isValidSupplyName(plugin, cleanMeta.getDisplayName())) {
+                        cleanMeta.setDisplayName(CustomNamePolicy.safeDefaultSupplyName(plugin));
+                        cleanItem.setItemMeta(cleanMeta);
+                        changed = true;
+                        renamedNames++;
+                    }
+
                     changed |= stripUploadedSupplyMetadata(cleanItem);
                     String uploadTimePath = path + ".uploadTime";
                     long uploadTime;
@@ -250,9 +260,9 @@ public class GuiManager {
             }
             sortUploadedSupplyRecords();
         }
-        if (removedItems > 0) {
+        if (removedItems > 0 || renamedNames > 0) {
             plugin.logLocalized("custom_name_cleanup_log", "scope", "gui_items.yml uploaded supplies",
-                    "removed", String.valueOf(removedItems), "renamed", "0");
+                    "removed", String.valueOf(removedItems), "renamed", String.valueOf(renamedNames));
         }
         if (removedSupplies > 0) {
             plugin.logLocalized("supply_policy_cleanup_log", "scope", "gui_items.yml uploaded supplies",
@@ -701,7 +711,7 @@ public class GuiManager {
                 try {
                     UUID owner = UUID.fromString(metadata.owner);
                     ItemStack cleanItem = withoutUploadedSupplyMetadata(item);
-                    if (cleanItem == null || SupplyContentPolicy.validateSupply(cleanItem)
+                    if (cleanItem == null || SupplyContentPolicy.validateSupply(plugin, cleanItem)
                             != SupplyContentPolicy.ValidationResult.VALID) {
                         changed = true;
                         continue;
@@ -753,7 +763,7 @@ public class GuiManager {
     public String prepareUploadedSupply(Player owner, ItemStack box, boolean visible) {
         CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(box);
         if (cleanup.removeRoot()) return null;
-        if (SupplyContentPolicy.validateSupply(box) != SupplyContentPolicy.ValidationResult.VALID) return null;
+        if (SupplyContentPolicy.validateSupply(plugin, box) != SupplyContentPolicy.ValidationResult.VALID) return null;
         stripUploadedSupplyMetadata(box);
         String supplyId = UUID.randomUUID().toString();
         synchronized (uploadedSupplyLock) {
@@ -869,7 +879,7 @@ public class GuiManager {
         if (supplyId == null || supplyId.isBlank() || item == null || item.getType().isAir()) return false;
         ItemStack cleanItem = createUploadedSupplyDeliveryCopy(item);
         if (cleanItem == null) return false;
-        if (SupplyContentPolicy.validateSupply(cleanItem) != SupplyContentPolicy.ValidationResult.VALID) return false;
+        if (SupplyContentPolicy.validateSupply(plugin, cleanItem) != SupplyContentPolicy.ValidationResult.VALID) return false;
         synchronized (uploadedSupplyLock) {
             UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
             if (record != null && !record.owner.equals(ownerId)) return false;

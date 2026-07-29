@@ -203,7 +203,15 @@ public class KitListener implements Listener {
 
     public static void sendNamingInstructions(Player player, Kitloader plugin) {
         String cancelCmd = plugin.getConfig().getString("settings.naming.cancel-command", "/kitloader cancelname");
-        plugin.sendMsg(player, "naming_instructions", "cancel_cmd", cancelCmd);
+        plugin.sendMsg(player, "naming_instructions",
+                "cancel_cmd", cancelCmd,
+                "item_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.ITEM)),
+                "kit_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.KIT)),
+                "supply_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.SUPPLY)));
+        plugin.sendMsg(player, "naming_limits",
+                "item_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.ITEM)),
+                "kit_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.KIT)),
+                "supply_max", String.valueOf(CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.SUPPLY)));
     }
 
     private int countShulkers(Inventory inv) {
@@ -421,16 +429,17 @@ public class KitListener implements Listener {
             plugin.sendMsg(player, "custom_name_items_removed",
                     "removed", String.valueOf(cleanup.removedItems()));
         }
-        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents);
+        SupplyContentPolicy.Rules rules = SupplyContentPolicy.rules(plugin);
+        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents, rules);
         switch (result) {
             case VALID -> {
                 return true;
             }
             case NOT_FULL -> plugin.sendMsg(player, "supply_inventory_not_full",
-                    "required", String.valueOf(SupplyContentPolicy.REQUIRED_FILLED_SLOTS));
+                    "required", String.valueOf(rules.requiredFilledSlots()));
             case ALL_SAME -> plugin.sendMsg(player, "supply_all_same_rejected");
             case TOO_MANY_SIMILAR -> plugin.sendMsg(player, "supply_similar_stack_limit",
-                    "max", String.valueOf(SupplyContentPolicy.MAX_SIMILAR_STACKS));
+                    "max", String.valueOf(rules.maxSimilarStacks()));
             default -> plugin.sendMsg(player, "supply_invalid_box");
         }
         return false;
@@ -575,17 +584,20 @@ public class KitListener implements Listener {
             e.setCancelled(true);
             String coloredName = Kitloader.color(e.getMessage());
 
-            boolean kitName = (pData.publicEditSession != null && pData.publicEditSession.isNaming)
+            CustomNamePolicy.NameValidation validation;
+            if (pData.editSession != null && pData.editSession.isNaming) {
+                validation = CustomNamePolicy.validateSupplyName(plugin, coloredName);
+            } else if ((pData.publicEditSession != null && pData.publicEditSession.isNaming)
                     || (pData.namingContext != null
                     && (pData.namingContext.type == DataManager.NamingContext.Type.KIT_RENAME
                     || pData.namingContext.type == DataManager.NamingContext.Type.ADMIN_KIT_RENAME
-                    || pData.namingContext.type == DataManager.NamingContext.Type.PUBLIC_KIT_RENAME));
-            boolean validName = kitName
-                    ? CustomNamePolicy.isValidKitName(coloredName)
-                    : CustomNamePolicy.isValidColoredDisplayName(coloredName);
-            if (!validName) {
-                plugin.sendMsg(player, "name_too_long",
-                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+                    || pData.namingContext.type == DataManager.NamingContext.Type.PUBLIC_KIT_RENAME))) {
+                validation = CustomNamePolicy.validateKitName(plugin, coloredName);
+            } else {
+                validation = CustomNamePolicy.validateItemName(plugin, coloredName);
+            }
+            if (!validation.valid()) {
+                CustomNamePolicy.sendValidationFailure(plugin, player, validation);
                 return;
             }
 

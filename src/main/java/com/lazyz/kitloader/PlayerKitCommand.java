@@ -111,9 +111,10 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
             String oldName = args[1];
             String newName = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
 
-            if (!CustomNamePolicy.isValidKitName(newName)) {
-                plugin.sendMsg(player, "name_too_long",
-                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+            CustomNamePolicy.NameValidation nameValidation =
+                    CustomNamePolicy.validateKitName(plugin, newName);
+            if (!nameValidation.valid()) {
+                CustomNamePolicy.sendValidationFailure(plugin, player, nameValidation);
                 return true;
             }
             if (!pData.kits.containsKey(oldName)) {
@@ -135,9 +136,10 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
         if (subCmd.equals("save") && args.length >= 2) {
             String kitName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-            if (!CustomNamePolicy.isValidKitName(kitName)) {
-                plugin.sendMsg(player, "name_too_long",
-                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+            CustomNamePolicy.NameValidation nameValidation =
+                    CustomNamePolicy.validateKitName(plugin, kitName);
+            if (!nameValidation.valid()) {
+                CustomNamePolicy.sendValidationFailure(plugin, player, nameValidation);
                 return true;
             }
             boolean isEmpty = true;

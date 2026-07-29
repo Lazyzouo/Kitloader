@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.1
+**Version:** 2.0.2
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -46,6 +46,12 @@ In `single-use-worlds`, non-whitelisted players may use only `/kit`, `/kit list`
 | `settings.max-kits` | `9` | Personal Kit maximum per player |
 | `custom-supply.enabled` | `true` | Lets players upload custom supplies |
 | `custom-supply.max-limit` | `3` | Uploaded supply maximum per player |
+| `custom-supply.content-policy.required-filled-slots` | `27` | Minimum occupied supply slots; range 1-27 |
+| `custom-supply.content-policy.reject-all-same` | `true` | Rejects a supply containing only one similar item type |
+| `custom-supply.content-policy.max-similar-stacks` | `16` | Maximum occupied stacks of one similar type; range 1-27 |
+| `naming.item-max-visible-length` | `40` | Custom item-name visible-character limit |
+| `naming.kit-max-visible-length` | `18` | Personal/shared Kit-name visible-character limit |
+| `naming.supply-max-visible-length` | `18` | Uploaded supply-name visible-character limit |
 | `public-kits.upload-enabled` | `true` | Lets players upload shared Kits |
 | `public-kits.max-limit` | `2` | Shared Kit maximum per player |
 | `autosave.required-filled-slots` | `36` | Required filled storage slots for autosave |
@@ -62,7 +68,8 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 - A save copies the player's storage inventory; excess shulker boxes are trimmed from the saved copy according to `kit-save-max`.
 - Loading clears the current inventory and applies the stored copy. In restricted worlds, a player must die and respawn before loading again.
-- Autosave runs only when closing or refreshing the Kitloader interface, not after every Kit use. It requires the configured filled-slot threshold.
+- Autosave runs only when closing or refreshing the Kitloader interface, not after every Kit use. It requires the configured filled-slot threshold and skips a snapshot identical to the newest autosave.
+- Successful snapshots use increasing names (`autosave-1`, `autosave-2`, ...). They count toward `max-kits`; when full, only the oldest autosave is rotated out. `autosave` and `autosave-N` are reserved system names. Kits outside that namespace are never removed, so autosave is skipped when all slots are manual Kits.
 
 ### Shared Kits
 
@@ -73,8 +80,8 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ### Custom supplies
 
-- Upload requires all 27 shulker slots to be filled, rejects nested shulker boxes and all-one-type contents, limits one similar item type to 16 occupied stacks, checks per-player limits, and rejects equivalent uploads. Renaming does not bypass item grouping.
-- Existing uploaded supplies that violate the full-box, all-one-type, or 16-similar-stack rules are removed from player data and public records during load.
+- Supply content policy is hot-reloadable: the official defaults require 27 occupied slots, reject all-one-type contents, and allow one similar type in at most 16 occupied stacks. The numeric values are clamped to 1-27. Nested boxes, per-player limits, and equivalent uploads remain rejected; renaming does not bypass grouping.
+- Existing uploads that violate the current policy are removed from player data and public records during startup, load, or `/kitloader reload`. Existing over-limit supply names are reset to a safe configured default without deleting the box.
 - Uploads and public supply entries are ordered by upload time.
 - A hidden supply is removed immediately from every public page, including the owner's public page, and cannot be claimed there. It remains editable in uploaded-supply management.
 - Publishing a hidden supply appends it at the end of the public supply sequence and refreshes open supply pages.
@@ -91,7 +98,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.
 - The disposal area intentionally produces no destruction sound and no "silent" wording.
-- Custom item/supply names and decorated Kit labels are limited to 399 final Bukkit characters after color expansion. Existing persisted items at 400 or more characters are recursively removed from Kits, shulker/container snapshots, bundles, GUI categories, and uploaded supplies before ICUAC can scan them.
+- Visible Unicode characters are counted after Minecraft color and format codes are removed. Official defaults are 40 for custom item names and 18 for personal/shared Kit and uploaded-supply names; all three are hot-reloadable from `settings.naming`. A non-configurable 399-character expanded Bukkit safety cap remains, and persisted items at 400 or more are recursively removed before ICUAC can scan them.
 
 ## 5. Updating
 
@@ -109,7 +116,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.1
+**版本：**2.0.2
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -153,6 +160,12 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 | `settings.max-kits` | `9` | 每人个人 Kit 上限 |
 | `custom-supply.enabled` | `true` | 允许玩家上传自定义补给 |
 | `custom-supply.max-limit` | `3` | 每人上传补给上限 |
+| `custom-supply.content-policy.required-filled-slots` | `27` | 补给至少填入格数，范围 1-27 |
+| `custom-supply.content-policy.reject-all-same` | `true` | 拒绝整盒只有一种相似物品 |
+| `custom-supply.content-policy.max-similar-stacks` | `16` | 同类物品最多占用组数，范围 1-27 |
+| `naming.item-max-visible-length` | `40` | 物品自定义名称可见字符上限 |
+| `naming.kit-max-visible-length` | `18` | 个人/共享 Kit 名称可见字符上限 |
+| `naming.supply-max-visible-length` | `18` | 上传补给名称可见字符上限 |
 | `public-kits.upload-enabled` | `true` | 允许玩家上传共享 Kit |
 | `public-kits.max-limit` | `2` | 每人共享 Kit 上限 |
 | `autosave.required-filled-slots` | `36` | 自动保存所需填满的储物格数 |
@@ -169,7 +182,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 - 保存时复制玩家储物栏；超过 `kit-save-max` 的潜影盒只会从保存副本中剔除。
 - 加载会清空当前背包并应用保存副本。受限世界中，玩家必须死亡并复活后才可再次加载。
-- 自动保存只在关闭或刷新 Kitloader 界面时触发，不会在每次使用 Kit 后触发，并要求达到填满格数阈值。
+- 自动保存只在关闭或刷新 Kitloader 界面时触发，不会在每次使用 Kit 后触发；必须达到填满格数阈值，且与最新自动保存相同的内容不会重复生成。
+- 成功快照按 `autosave-1`、`autosave-2` 递增并计入 `max-kits`。`autosave` 与 `autosave-N` 属于系统保留名称；达到上限时只轮换此命名空间内最旧的自动保存，绝不删除其他手动命名 Kit。若所有位置都是手动 Kit，则跳过自动保存。
 
 ### 共享 Kit
 
@@ -180,8 +194,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 ### 自定义补给
 
-- 上传要求潜影盒 27 格全部填满，禁止盒中盒、整盒只有同一种物品，并限制同一种相似物品最多占用 16 组；同时检查每人上限和内容重复。重命名不能绕过同类分组。
-- 加载数据时会从玩家数据和公共记录中删除不符合全满、全同或 16 组限制的现有上传补给。
+- 补给内容规则可热重载：官方默认至少填入 27 格、拒绝整盒全同、同类最多占用 16 组，数字会限制在 1-27。盒中盒、每人上限和内容重复仍会被拒绝，重命名不能绕过同类分组。
+- 启动、加载或执行 `/kitloader reload` 时，会从玩家数据和公共记录删除不符合当前规则的旧补给；旧补给名称若超过当前上限，只会重置为安全默认名，不会删除整盒物品。
 - 上传补给与公共补给按上传时间排序。
 - 隐藏补给会立即从所有公共页移除，包括上传者自己的公共页，且不能在公共页领取；仍可在已上传补给管理页编辑。
 - 重新公开时会排列到公共补给末尾，并刷新已打开的补给页。
@@ -198,7 +212,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 - 盔甲纹饰和原材料染色从可用项中随机选择，不再固定使用第一个。
 - 不兼容附魔会在冷却内拒绝，防止提示和拒绝音效刷屏。
 - 销毁区不播放销毁音效，也不显示“无声”字样。
-- 自定义物品/补给名称及带装饰的 Kit 名称，按颜色代码展开后的 Bukkit 最终字符串限制为 399 字符。现有达到 400 字符的持久化物品会在 ICUAC 扫描前，从 Kit、潜影盒/容器快照、收纳袋、GUI 分类和上传补给中递归删除。
+- 可见 Unicode 字符会在去除 Minecraft 颜色与格式代码后计数。官方默认物品名称 40 字符、个人/共享 Kit 与上传补给名称 18 字符，三项均可在 `settings.naming` 热修改；不可配置的 399 字符 Bukkit 展开安全线仍保留，达到 400 字符的持久化物品会在 ICUAC 扫描前递归删除。
 
 ## 5. 更新
 

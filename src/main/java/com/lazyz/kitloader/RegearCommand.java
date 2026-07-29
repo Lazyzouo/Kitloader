@@ -360,7 +360,8 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                 admin.closeInventory();
                 admin.getScheduler().run(plugin, task -> transitioning.remove(admin.getUniqueId()),
                         () -> transitioning.remove(admin.getUniqueId()));
-                plugin.sendMsg(admin, "regear_name_prompt");
+                plugin.sendMsg(admin, "regear_name_prompt", "max", String.valueOf(
+                        CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.SUPPLY)));
             } else {
                 captureEditorContents(event.getView().getTopInventory(), session.editor);
                 saveEditor(admin, session);
@@ -525,13 +526,15 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         String newName = event.getMessage().trim();
         String coloredName = Kitloader.color(newName);
         String visibleName = ChatColor.stripColor(coloredName);
-        if (newName.isEmpty() || visibleName == null || visibleName.isBlank() || visibleName.length() > 50) {
+        if (newName.isEmpty() || visibleName == null || visibleName.isBlank()) {
             admin.getScheduler().run(plugin, task -> plugin.sendMsg(admin, "regear_name_invalid"), null);
             return;
         }
-        if (!CustomNamePolicy.isValidColoredDisplayName(coloredName)) {
-            admin.getScheduler().run(plugin, task -> plugin.sendMsg(admin, "name_too_long",
-                    "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH)), null);
+        CustomNamePolicy.NameValidation nameValidation =
+                CustomNamePolicy.validateSupplyName(plugin, coloredName);
+        if (!nameValidation.valid()) {
+            admin.getScheduler().run(plugin,
+                    task -> CustomNamePolicy.sendValidationFailure(plugin, admin, nameValidation), null);
             return;
         }
         session.editor.displayName = coloredName;
@@ -547,7 +550,8 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         AdminSession session = sessions.get(event.getPlayer().getUniqueId());
         if (session == null || !session.awaitingName) return;
         event.setCancelled(true);
-        plugin.sendMsg(event.getPlayer(), "regear_name_prompt");
+        plugin.sendMsg(event.getPlayer(), "regear_name_prompt", "max", String.valueOf(
+                CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.SUPPLY)));
     }
 
     @EventHandler
@@ -620,16 +624,17 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             plugin.sendMsg(admin, "custom_name_items_removed",
                     "removed", String.valueOf(cleanup.removedItems()));
         }
-        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents);
+        SupplyContentPolicy.Rules rules = SupplyContentPolicy.rules(plugin);
+        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents, rules);
         switch (result) {
             case VALID -> {
                 return true;
             }
             case NOT_FULL -> plugin.sendMsg(admin, "supply_inventory_not_full",
-                    "required", String.valueOf(SupplyContentPolicy.REQUIRED_FILLED_SLOTS));
+                    "required", String.valueOf(rules.requiredFilledSlots()));
             case ALL_SAME -> plugin.sendMsg(admin, "supply_all_same_rejected");
             case TOO_MANY_SIMILAR -> plugin.sendMsg(admin, "supply_similar_stack_limit",
-                    "max", String.valueOf(SupplyContentPolicy.MAX_SIMILAR_STACKS));
+                    "max", String.valueOf(rules.maxSimilarStacks()));
             default -> plugin.sendMsg(admin, "supply_invalid_box");
         }
         return false;

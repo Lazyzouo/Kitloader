@@ -69,6 +69,8 @@ public class KitloaderCommand implements CommandExecutor, TabCompleter {
             }
             plugin.reloadPlugin();
             data.loadPublicKits();
+            data.revalidateCachedPlayerData();
+            gui.refreshOpenSupplyPages();
             plugin.refreshOnlineCommandTrees();
             plugin.sendMsg(sender, "reload_success");
             return true;

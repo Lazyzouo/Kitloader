@@ -8,29 +8,49 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class SupplyContentPolicy {
-    static final int REQUIRED_FILLED_SLOTS = 27;
-    static final int MAX_SIMILAR_STACKS = 16;
+    static final int DEFAULT_REQUIRED_FILLED_SLOTS = 27;
+    static final int DEFAULT_MAX_SIMILAR_STACKS = 16;
+    private static final int MAX_SUPPLY_SLOTS = 27;
 
     private SupplyContentPolicy() {
     }
 
-    static ValidationResult validateSupply(ItemStack supply) {
+    static Rules rules(Kitloader plugin) {
+        int requiredFilledSlots = clamp(
+                plugin.getConfig().getInt("settings.custom-supply.content-policy.required-filled-slots",
+                        DEFAULT_REQUIRED_FILLED_SLOTS),
+                1, MAX_SUPPLY_SLOTS);
+        int maxSimilarStacks = clamp(
+                plugin.getConfig().getInt("settings.custom-supply.content-policy.max-similar-stacks",
+                        DEFAULT_MAX_SIMILAR_STACKS),
+                1, MAX_SUPPLY_SLOTS);
+        boolean rejectAllSame = plugin.getConfig().getBoolean(
+                "settings.custom-supply.content-policy.reject-all-same", true);
+        return new Rules(requiredFilledSlots, rejectAllSame, maxSimilarStacks);
+    }
+
+    static ValidationResult validateSupply(Kitloader plugin, ItemStack supply) {
         if (supply == null || !(supply.getItemMeta() instanceof BlockStateMeta meta)
                 || !(meta.getBlockState() instanceof ShulkerBox box)) {
             return ValidationResult.INVALID_BOX;
         }
-        return validateContents(box.getInventory().getContents());
+        return validateContents(box.getInventory().getContents(), rules(plugin));
     }
 
-    static ValidationResult validateContents(ItemStack[] contents) {
-        if (contents == null || contents.length < REQUIRED_FILLED_SLOTS) {
-            return ValidationResult.NOT_FULL;
-        }
+    static ValidationResult validateContents(Kitloader plugin, ItemStack[] contents) {
+        return validateContents(contents, rules(plugin));
+    }
+
+    static ValidationResult validateContents(ItemStack[] contents, Rules rules) {
+        if (contents == null) return ValidationResult.NOT_FULL;
 
         List<ItemGroup> groups = new ArrayList<>();
-        for (int slot = 0; slot < REQUIRED_FILLED_SLOTS; slot++) {
+        int filledSlots = 0;
+        int slots = Math.min(MAX_SUPPLY_SLOTS, contents.length);
+        for (int slot = 0; slot < slots; slot++) {
             ItemStack item = contents[slot];
-            if (item == null || item.getType().isAir()) return ValidationResult.NOT_FULL;
+            if (item == null || item.getType().isAir()) continue;
+            filledSlots++;
 
             ItemGroup matchingGroup = null;
             for (ItemGroup group : groups) {
@@ -43,11 +63,19 @@ final class SupplyContentPolicy {
             else matchingGroup.stackCount++;
         }
 
-        if (groups.size() == 1) return ValidationResult.ALL_SAME;
+        if (filledSlots < rules.requiredFilledSlots()) return ValidationResult.NOT_FULL;
+        if (rules.rejectAllSame() && groups.size() == 1) return ValidationResult.ALL_SAME;
         for (ItemGroup group : groups) {
-            if (group.stackCount > MAX_SIMILAR_STACKS) return ValidationResult.TOO_MANY_SIMILAR;
+            if (group.stackCount > rules.maxSimilarStacks()) return ValidationResult.TOO_MANY_SIMILAR;
         }
         return ValidationResult.VALID;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    record Rules(int requiredFilledSlots, boolean rejectAllSame, int maxSimilarStacks) {
     }
 
     enum ValidationResult {

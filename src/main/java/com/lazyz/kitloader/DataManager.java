@@ -14,6 +14,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DataManager {
+    private static final String LEGACY_AUTOSAVE_NAME = "autosave";
+    private static final String AUTOSAVE_PREFIX = "autosave-";
     private final Kitloader plugin;
     private final Map<UUID, PlayerData> cache = new ConcurrentHashMap<>();
     private final Map<UUID, Long> saveVersions = new ConcurrentHashMap<>();
@@ -328,15 +330,90 @@ public class DataManager {
 
         data.lastLoadedKitSnapshot = null;
         int removedShulkers = plugin.enforceKitShulkerLimit(current);
-        if (sameItems(data.kits.get("autosave"), current)) return false;
+        String latestAutosave = latestAutosaveName(data.kits.keySet());
+        if (latestAutosave != null && sameItems(data.kits.get(latestAutosave), current)) return false;
 
-        data.kits.put("autosave", current);
+        int nextAutosaveNumber = nextAutosaveNumber(data.kits.keySet());
+        int maxKits = Math.max(1, plugin.getConfig().getInt("settings.max-kits", 9));
+        while (data.kits.size() >= maxKits) {
+            String oldestAutosave = oldestAutosaveName(data.kits.keySet());
+            if (oldestAutosave == null) return false;
+            data.kits.remove(oldestAutosave);
+        }
+
+        String autosaveName = AUTOSAVE_PREFIX + nextAutosaveNumber;
+        data.kits.put(autosaveName, current);
         savePlayerAsync(player.getUniqueId());
         if (removedShulkers > 0) plugin.sendMsg(player, "kit_shulker_trimmed",
                 "max", String.valueOf(plugin.getConfig().getInt("settings.shulker-limits.kit-save-max", 3)),
                 "removed", String.valueOf(removedShulkers));
-        plugin.sendMsg(player, "autosave_success");
+        plugin.sendMsg(player, "autosave_success", "kit", autosaveName);
         return true;
+    }
+
+    private String latestAutosaveName(Collection<String> kitNames) {
+        return kitNames.stream()
+                .filter(this::isAutosaveName)
+                .max(Comparator.comparingInt(this::autosaveNumber))
+                .orElse(null);
+    }
+
+    private String oldestAutosaveName(Collection<String> kitNames) {
+        return kitNames.stream()
+                .filter(this::isAutosaveName)
+                .min(Comparator.comparingInt(this::autosaveNumber))
+                .orElse(null);
+    }
+
+    private int nextAutosaveNumber(Collection<String> kitNames) {
+        return kitNames.stream()
+                .filter(this::isAutosaveName)
+                .mapToInt(this::autosaveNumber)
+                .max()
+                .orElse(0) + 1;
+    }
+
+    private boolean isAutosaveName(String name) {
+        if (LEGACY_AUTOSAVE_NAME.equals(name)) return true;
+        if (name == null || !name.startsWith(AUTOSAVE_PREFIX)) return false;
+        try {
+            return Integer.parseInt(name.substring(AUTOSAVE_PREFIX.length())) > 0;
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    private int autosaveNumber(String name) {
+        if (LEGACY_AUTOSAVE_NAME.equals(name)) return 0;
+        try {
+            return Integer.parseInt(name.substring(AUTOSAVE_PREFIX.length()));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    public void revalidateCachedPlayerData() {
+        for (PlayerData playerData : cache.values()) {
+            CleanupSummary cleanup = sanitizePlayerData(playerData);
+            logSupplyCleanup(playerData.uuid + ".yml", cleanup);
+            logCustomNameCleanup(playerData.uuid + ".yml", cleanup);
+            if (cleanup.changed()) saveOfflinePlayerAsync(playerData);
+
+            Player player = plugin.getServer().getPlayer(playerData.uuid);
+            if (player == null || !player.isOnline()) continue;
+            player.getScheduler().run(plugin, task -> {
+                if (playerData.pendingRemovedCustomNameItems > 0) {
+                    plugin.sendMsg(player, "custom_name_items_removed",
+                            "removed", String.valueOf(playerData.pendingRemovedCustomNameItems));
+                    playerData.pendingRemovedCustomNameItems = 0;
+                }
+                if (playerData.pendingRemovedInvalidSupplies > 0) {
+                    plugin.sendMsg(player, "supply_policy_existing_removed",
+                            "removed", String.valueOf(playerData.pendingRemovedInvalidSupplies));
+                    playerData.pendingRemovedInvalidSupplies = 0;
+                }
+            }, null);
+        }
     }
 
     public ItemStack[] copyItems(ItemStack[] source) {
@@ -357,8 +434,8 @@ public class DataManager {
             changed |= itemCleanup.changed();
             removedItems += itemCleanup.removedItems();
 
-            if (!CustomNamePolicy.isValidKitName(kit.kitName)) {
-                kit.kitName = nextSafeKitName("Recovered Shared Kit", usedNames);
+            if (!CustomNamePolicy.isValidKitName(plugin, kit.kitName)) {
+                kit.kitName = nextSafeKitName("Recovered Shared", usedNames);
                 changed = true;
                 renamedNames++;
             }
@@ -377,7 +454,8 @@ public class DataManager {
             Map<String, ItemStack[]> cleanKits = new LinkedHashMap<>();
             for (Map.Entry<String, ItemStack[]> entry : data.kits.entrySet()) {
                 String name = entry.getKey();
-                if (!CustomNamePolicy.isValidKitName(name) || cleanKits.containsKey(name)) {
+                if ((!isAutosaveName(name) && !CustomNamePolicy.isValidKitName(plugin, name))
+                        || cleanKits.containsKey(name)) {
                     name = nextSafeKitName("Recovered Kit", cleanKits.keySet());
                     changed = true;
                     renamedNames++;
@@ -398,10 +476,20 @@ public class DataManager {
                 removedItems += itemCleanup.removedItems();
 
                 boolean removeSupply = itemCleanup.removeRoot();
-                if (!removeSupply && SupplyContentPolicy.validateSupply(supply)
+                if (!removeSupply && SupplyContentPolicy.validateSupply(plugin, supply)
                         != SupplyContentPolicy.ValidationResult.VALID) {
                     removeSupply = true;
                     removedSupplies++;
+                }
+                if (!removeSupply && supply.getItemMeta() != null
+                        && supply.getItemMeta().hasDisplayName()) {
+                    org.bukkit.inventory.meta.ItemMeta meta = supply.getItemMeta();
+                    if (!CustomNamePolicy.isValidSupplyName(plugin, meta.getDisplayName())) {
+                        meta.setDisplayName(CustomNamePolicy.safeDefaultSupplyName(plugin));
+                        supply.setItemMeta(meta);
+                        changed = true;
+                        renamedNames++;
+                    }
                 }
                 if (removeSupply) {
                     changed = true;
@@ -424,8 +512,8 @@ public class DataManager {
                 CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(data.editSession.items);
                 changed |= itemCleanup.changed();
                 removedItems += itemCleanup.removedItems();
-                if (!CustomNamePolicy.isValidColoredDisplayName(Kitloader.color(data.editSession.name))) {
-                    data.editSession.name = "Shulker Box";
+                if (!CustomNamePolicy.isValidSupplyName(plugin, Kitloader.color(data.editSession.name))) {
+                    data.editSession.name = CustomNamePolicy.safeDefaultSupplyName(plugin);
                     changed = true;
                     renamedNames++;
                 }
@@ -435,8 +523,8 @@ public class DataManager {
                 CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(data.publicEditSession.items);
                 changed |= itemCleanup.changed();
                 removedItems += itemCleanup.removedItems();
-                if (!CustomNamePolicy.isValidKitName(data.publicEditSession.name)) {
-                    data.publicEditSession.name = "Recovered Shared Kit";
+                if (!CustomNamePolicy.isValidKitName(plugin, data.publicEditSession.name)) {
+                    data.publicEditSession.name = nextSafeKitName("Recovered Shared", Set.of());
                     changed = true;
                     renamedNames++;
                 }
@@ -449,12 +537,47 @@ public class DataManager {
     }
 
     private String nextSafeKitName(String base, Collection<String> usedNames) {
-        String candidate = base;
-        int suffix = 2;
-        while (usedNames.contains(candidate) || !CustomNamePolicy.isValidKitName(candidate)) {
-            candidate = base + " " + suffix++;
+        int maxLength = CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.KIT);
+        if (maxLength < 3) return nextCompactKitName(usedNames);
+        int suffix = 1;
+        while (true) {
+            String suffixText = suffix == 1 ? "" : " " + suffix;
+            int baseLimit = Math.max(1, maxLength - suffixText.length());
+            String safeBase = truncateCodePoints(base, baseLimit);
+            String candidate = safeBase + suffixText;
+            if (!usedNames.contains(candidate) && CustomNamePolicy.isValidKitName(plugin, candidate)) {
+                return candidate;
+            }
+            suffix++;
         }
-        return candidate;
+    }
+
+    private String nextCompactKitName(Collection<String> usedNames) {
+        int basicStart = 0x4E00;
+        int basicCount = 0x9FFF - basicStart + 1;
+        int extensionStart = 0x20000;
+        int extensionCount = 0x2FA1D - extensionStart + 1;
+        int candidateCount = basicCount + extensionCount;
+
+        for (int index = 0; index < candidateCount; index++) {
+            int codePoint = index < basicCount
+                    ? basicStart + index
+                    : extensionStart + index - basicCount;
+            String candidate = new String(Character.toChars(codePoint));
+            if (!usedNames.contains(candidate)
+                    && CustomNamePolicy.isValidKitName(plugin, candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new IllegalStateException(
+                "No recovery Kit name is available within the configured visible-length limit.");
+    }
+
+    private String truncateCodePoints(String value, int maxCodePoints) {
+        if (value.codePointCount(0, value.length()) <= maxCodePoints) return value;
+        int endIndex = value.offsetByCodePoints(0, maxCodePoints);
+        return value.substring(0, endIndex);
     }
 
     private void logCustomNameCleanup(String scope, CleanupSummary cleanup) {

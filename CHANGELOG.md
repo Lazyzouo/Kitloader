@@ -4,6 +4,44 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.2] - 2026-07-29
+
+### Added
+
+- Added hot-reloadable visible Unicode name limits: 40 characters for custom item names and 18 for personal/shared Kit and uploaded-supply names by official default.
+- Added hot-reloadable uploaded-supply content policy options for required occupied slots, all-same rejection, and maximum similar occupied stacks.
+- Naming prompts and rejection messages now report the active limits and count characters after Minecraft color/format codes are removed.
+
+### Changed
+
+- Autosave now creates increasing snapshots (`autosave-1`, `autosave-2`, ...), skips unchanged content, respects `max-kits`, and rotates only the oldest autosave instead of overwriting one fixed Kit.
+- Startup, load, and `/kitloader reload` revalidate existing supply data against the active policy. Existing over-limit supply names are reset safely without deleting the box.
+- Supply-policy feedback now reflects dynamic occupied-slot and similar-stack values.
+
+### Fixed
+
+- Name length is measured as visible Unicode code points after color and format codes are stripped, while preserving the fixed 399-character expanded Bukkit safety cap for ICUAC compatibility.
+- Tightening a Kit-name limit can no longer trap recovery-name generation in an endless suffix loop.
+
+## [2.0.2] - 2026-07-29（中文）
+
+### 新增
+
+- 新增可热重载的 Unicode 可见名称上限：官方默认物品自定义名称 40 字符，个人/共享 Kit 与上传补给名称 18 字符。
+- 新增可热重载的上传补给内容规则：最少填入格数、是否拒绝整盒全同、同类最多占用组数。
+- 命名说明和拒绝提示会显示当前生效上限，并在去除 Minecraft 颜色/格式代码后计算字符数。
+
+### 变更
+
+- 自动保存改为递增快照（`autosave-1`、`autosave-2`……），相同内容不会重复生成；快照遵守 `max-kits`，达到上限时只轮换最旧的自动保存，不再覆盖固定 Kit。
+- 启动、加载及执行 `/kitloader reload` 时，会按当前规则重新校验旧补给；旧补给名称超限时安全重置名称，不删除整盒物品。
+- 补给规则提示会显示当前动态填入格数及同类组数。
+
+### 修复
+
+- 名称长度改为去除颜色与格式代码后的 Unicode 可见码点计数，同时保留用于 ICUAC 兼容的 399 字符 Bukkit 展开安全线。
+- 收紧 Kit 名称上限时，恢复名称生成不再因不断追加后缀而陷入死循环。
+
 ## [2.0.1] - 2026-07-29
 
 ### Added
