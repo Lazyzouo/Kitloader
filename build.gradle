@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.lazyz'
-version = '2.0.4'
+version = '2.0.5'
 def pluginAuthor = 'Lazyz'
 
 repositories {

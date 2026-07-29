@@ -53,6 +53,31 @@ public class KitListener implements Listener {
         cleaned = cleaned.replaceAll("(?i)[&§][0-9a-fk-or]", "");
         return Kitloader.canonicalize(cleaned.trim());
     }
+    private boolean isTopInventoryClick(InventoryClickEvent event) {
+        int rawSlot = event.getRawSlot();
+        return rawSlot >= 0 && rawSlot < event.getView().getTopInventory().getSize();
+    }
+
+    private boolean isBottomInventoryClick(InventoryClickEvent event) {
+        int rawSlot = event.getRawSlot();
+        int topSize = event.getView().getTopInventory().getSize();
+        if (rawSlot < topSize) return false;
+        int convertedSlot = event.getView().convertSlot(rawSlot);
+        return convertedSlot >= 0 && convertedSlot < event.getView().getBottomInventory().getSize();
+    }
+
+    private ItemStack resolveClickedItem(InventoryClickEvent event) {
+        int rawSlot = event.getRawSlot();
+        if (isTopInventoryClick(event)) {
+            return event.getView().getTopInventory().getItem(rawSlot);
+        }
+        if (isBottomInventoryClick(event)) {
+            int convertedSlot = event.getView().convertSlot(rawSlot);
+            return event.getView().getBottomInventory().getItem(convertedSlot);
+        }
+        return event.getCurrentItem();
+    }
+
 
     private boolean isRestrictedKitloaderGui(String cleanTitle) {
         String categoryPrefix = cleanText(plugin.getGuiTitle("category-prefix", ""));
@@ -70,6 +95,31 @@ public class KitListener implements Listener {
                 || cleanTitle.contains("在线玩家背包管理")
                 || cleanTitle.contains("背包与装备")
                 || cleanTitle.contains("末影箱编辑");
+    }
+
+    private boolean isKitloaderGui(String cleanTitle) {
+        if (isRestrictedKitloaderGui(cleanTitle)) return true;
+        String kitEditPrefix = cleanText(plugin.getGuiTitle("kit-edit-prefix", ""));
+        if (!kitEditPrefix.isEmpty() && cleanTitle.startsWith(kitEditPrefix)) return true;
+        return cleanTitle.equals(cleanText(GuiManager.T_SAVE_PLAYER))
+                || cleanTitle.equals(cleanText(GuiManager.T_DEL_PLAYER))
+                || cleanTitle.equals(cleanText(GuiManager.T_SAVE_ADMIN))
+                || cleanTitle.equals(cleanText(GuiManager.T_DEL_ADMIN))
+                || cleanTitle.equals(cleanText(GuiManager.T_SAVE_PUB))
+                || cleanTitle.equals(cleanText(GuiManager.T_DEL_PUB))
+                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_PUB))
+                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_PLAYER))
+                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_ADMIN))
+                || cleanTitle.equals(cleanText(GuiManager.T_CANCEL_UP))
+                || cleanTitle.equals(cleanText(GuiManager.T_DO_UP))
+                || cleanTitle.contains("个人Kit")
+                || cleanTitle.contains("玩家Kit")
+                || cleanTitle.contains("管理他人Kit")
+                || cleanTitle.contains("查看共享Kit")
+                || cleanTitle.contains("我的共享Kit")
+                || cleanTitle.contains("编辑共享Kit")
+                || cleanTitle.contains("放弃编辑")
+                || cleanTitle.contains("确认删除补给");
     }
 
     private boolean closeRestrictedKitloaderGui(Player player, String cleanTitle) {
@@ -1169,7 +1219,16 @@ public class KitListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void resyncKitloaderClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (!isKitloaderGui(cleanText(event.getView().getTitle()))) return;
+        player.getScheduler().runDelayed(plugin, task -> {
+            if (player.isOnline()) player.updateInventory();
+        }, null, 2L);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
@@ -1183,7 +1242,9 @@ public class KitListener implements Listener {
         if (pData == null) return;
 
         int slot = event.getRawSlot();
-        ItemStack clickedItem = event.getCurrentItem();
+        boolean topInventoryClick = isTopInventoryClick(event);
+        boolean bottomInventoryClick = isBottomInventoryClick(event);
+        ItemStack clickedItem = resolveClickedItem(event);
 
         String tSavePlayer = cleanText(GuiManager.T_SAVE_PLAYER);
         String tDelPlayer = cleanText(GuiManager.T_DEL_PLAYER);
@@ -1495,7 +1556,7 @@ public class KitListener implements Listener {
 
         if (cleanTitle.contains("查看共享Kit")) {
             event.setCancelled(true);
-            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (topInventoryClick) {
                 if (slot == 45) {
                     gui.openCategoryGui(player, "public_kits", 0);
                 } else if (slot == 53) {
@@ -1647,7 +1708,7 @@ public class KitListener implements Listener {
         }
 
         if (cleanTitle.contains("编辑共享Kit:")) {
-            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (topInventoryClick) {
                 if (slot >= 41 && slot <= 53) {
                     event.setCancelled(true);
                     String kitId = gui.getPublicTargetCache(player.getUniqueId());
@@ -1682,7 +1743,7 @@ public class KitListener implements Listener {
             Inventory ec = player.getEnderChest();
             int maxSlots = Math.min(uiSlots, Math.min(45, ec.getSize()));
 
-            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (topInventoryClick) {
                 if (slot == 49) {
                     gui.openCategoryGui(player, "supply", 0);
                     return;
@@ -1707,7 +1768,7 @@ public class KitListener implements Listener {
                     gui.openDedicatedEnderChestGui(player);
                 }
             }
-            else if (event.getClickedInventory() == event.getView().getBottomInventory()) {
+            else if (bottomInventoryClick) {
                 if (clickedItem == null || clickedItem.getType().isAir()) return;
 
                 long nowClick = System.currentTimeMillis();
@@ -1794,7 +1855,7 @@ public class KitListener implements Listener {
             int currentPage = 0;
             try { currentPage = Integer.parseInt(rawData) - 1; } catch (NumberFormatException ignored) {}
 
-            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
+            if (bottomInventoryClick) {
                 if (clickedItem == null || !plugin.isKitloaderShulker(clickedItem)) return;
                 ItemStack cleanSupply = gui.createUploadedSupplyDeliveryCopy(clickedItem);
                 plugin.markKitloaderShulker(cleanSupply);
@@ -1804,7 +1865,7 @@ public class KitListener implements Listener {
                 }
                 return;
             }
-            if (event.getClickedInventory() != event.getView().getTopInventory()) return;
+            if (!topInventoryClick) return;
 
             if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.ARROW) {
                 gui.openSupplyEnderChestGui(player, currentPage - 1);
@@ -1938,10 +1999,10 @@ public class KitListener implements Listener {
         boolean isRestricted = plugin.isRestrictedKitloaderPlayer(player);
 
             if (isRestricted && !isOther) {
-                if (event.getClickedInventory() == event.getView().getBottomInventory() && event.isShiftClick()) {
+                if (bottomInventoryClick && event.isShiftClick()) {
                     event.setCancelled(true); return;
                 }
-                if (event.getClickedInventory() == event.getView().getTopInventory()) {
+                if (topInventoryClick) {
                     event.setCancelled(true);
                     if (slot == 45) {
                         gui.openPlayerKitListGui(player, new ArrayList<>(pData.kits.keySet()));
@@ -1952,12 +2013,12 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (event.getClickedInventory() == event.getView().getBottomInventory() && event.isShiftClick()) {
+            if (bottomInventoryClick && event.isShiftClick()) {
                 moveShiftClickedItemIntoKitEditor(event);
                 return;
             }
 
-            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (topInventoryClick) {
                 if (slot >= 41 && slot <= 53) {
                     event.setCancelled(true);
                     if (slot == 45) {
@@ -2026,7 +2087,7 @@ public class KitListener implements Listener {
 
         String rawEditPrefix = cleanText(plugin.getGuiTitle("edit-prefix", ""));
         if (cleanTitle.startsWith(rawEditPrefix) && cleanTitle.contains(" - P")) {
-            if (event.getClickedInventory() == event.getView().getTopInventory()) {
+            if (topInventoryClick) {
                 if (slot >= 36 && slot <= 53) {
                     event.setCancelled(true);
                     if (clickedItem != null && clickedItem.getType() == Material.ARROW) {
@@ -2480,7 +2541,7 @@ public class KitListener implements Listener {
             int enderStart = toolbarStart + 9;
             int enderSlots = Math.min(gui.getUploadedSupplyEnderSlots(), player.getEnderChest().getSize());
 
-            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
+            if (bottomInventoryClick) {
                 if (clickedItem == null || !plugin.isKitloaderShulker(clickedItem)) return;
                 ItemStack cleanSupply = gui.createUploadedSupplyDeliveryCopy(clickedItem);
                 plugin.markKitloaderShulker(cleanSupply);
@@ -2583,7 +2644,7 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
+            if (bottomInventoryClick) {
                 if (event.isShiftClick()) {
                     event.setCancelled(true);
                     if (clickedItem == null || clickedItem.getType().isAir()) return;
@@ -2622,7 +2683,7 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (event.getClickedInventory() == null || event.getClickedInventory() != event.getView().getTopInventory()) return;
+            if (!topInventoryClick) return;
             if (slot == 45 || slot == 53) {
                 event.setCancelled(true);
                 if (clickedItem != null && clickedItem.getType() == Material.ARROW) {

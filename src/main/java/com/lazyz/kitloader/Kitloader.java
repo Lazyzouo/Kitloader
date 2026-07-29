@@ -66,7 +66,7 @@ public class Kitloader extends JavaPlugin {
 
         startShulkerLimitTracker();
         printStartupBanner();
-        sendMsg(getServer().getConsoleSender(), "plugin_enabled");
+        logLocalized("plugin_enabled");
         updateChecker = new UpdateChecker(this);
         updateChecker.checkOnStartup();
     }
@@ -386,10 +386,11 @@ public class Kitloader extends JavaPlugin {
                 .replace("{version}", getDescription().getVersion())
                 .replace("{author}", getDescription().getAuthors().isEmpty()
                         ? "Unknown"
-                        : getDescription().getAuthors().get(0));
+                        : getDescription().getAuthors().get(0))
+                .replace("{prefix}", "");
         String statusColor = switch (key) {
             case "update_checking" -> "&b";
-            case "update_latest", "update_downloaded" -> "&a";
+            case "plugin_enabled", "update_latest", "update_downloaded" -> "&a";
             case "update_available", "update_manual" -> "&e";
             case "update_failed" -> "&c";
             default -> "&7";

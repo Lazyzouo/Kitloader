@@ -4,6 +4,26 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.5] - 2026-07-29
+
+### Changed
+
+- The startup-success message now uses the same colored console prefix renderer as the startup banner and every update-status notice.
+
+### Fixed
+
+- Every Kitloader GUI now resolves top/bottom inventory clicks from the server raw slot and reads the clicked item from the server inventory snapshot. Simultaneous movement or jump packets can no longer make item claims, refresh controls, category switches, or page arrows appear unclickable.
+
+## [2.0.5] - 2026-07-29（中文）
+
+### 变更
+
+- 插件启动成功消息现在与启动横幅及全部更新状态通知使用同一套彩色后台前缀渲染。
+
+### 修复
+
+- 所有 Kitloader GUI 现在根据服务端原始槽位判断上下层库存，并从服务端库存快照读取被点击物品；移动或跳跃包与点击包同时到达时，领取、刷新、分类切换及翻页不再表现为无法点击。
+
 ## [2.0.4] - 2026-07-29
 
 ### Changed
