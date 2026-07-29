@@ -23,7 +23,7 @@
 | `settings.public-kits.upload-enabled` | `true` | Allows shared-Kit uploads |
 | `settings.public-kits.max-limit` | `2` | Maximum shared Kits per player |
 | `settings.single-use-worlds` | `[]` | Worlds with one load per death/respawn cycle |
-| `settings.bypass-whitelist` | `[]` | Players/UUIDs bypassing world restrictions and allowed `/regear`; `/inv` also requires OP |
+| `settings.bypass-whitelist` | `[]` | Players/UUIDs bypassing world restrictions and carried `inventory-max`, and allowed `/regear`; `/inv` also requires OP |
 | `settings.autosave.required-filled-slots` | `36` | Filled storage slots required for autosave |
 | `settings.shulker-limits.kit-save-max` | `3` | Maximum shulker boxes kept in a saved Kit |
 | `settings.shulker-limits.inventory-max` | `3` | Default carried shulker-box maximum |
@@ -47,7 +47,7 @@
 | `settings.public-kits.upload-enabled` | `true` | 允许上传共享 Kit |
 | `settings.public-kits.max-limit` | `2` | 每位玩家的共享 Kit 上限 |
 | `settings.single-use-worlds` | `[]` | 每次死亡/复活周期只能加载一次 Kit 的世界 |
-| `settings.bypass-whitelist` | `[]` | 绕过世界限制且可用 `/regear` 的玩家/UUID；`/inv` 还要求 OP |
+| `settings.bypass-whitelist` | `[]` | 绕过世界限制与随身 `inventory-max`，且可用 `/regear` 的玩家/UUID；`/inv` 还要求 OP |
 | `settings.autosave.required-filled-slots` | `36` | 触发自动保存所需填满的储物格数 |
 | `settings.shulker-limits.kit-save-max` | `3` | 保存 Kit 时保留的潜影盒上限 |
 | `settings.shulker-limits.inventory-max` | `3` | 默认可携带潜影盒上限 |

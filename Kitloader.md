@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.2
+**Version:** 2.0.3
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -89,7 +89,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 ### Ender Chest and shulker limits
 
 - `enderchest-max` controls both allowed shulker box count and dynamically visible storage slots. Values above nine use the larger UI without forcing a 54-slot UI when nine slots are configured.
-- `/kitloader invmax` synchronizes carried and personal-Kit save limits.
+- `/kitloader invmax` synchronizes carried and personal-Kit save limits. Players in `bypass-whitelist` bypass only the carried `inventory-max`; Ender Chest and saved-Kit limits still apply.
 - The live `/inv` editor synchronizes target inventory and Ender Chest changes while it remains open.
 
 ### Item editor
@@ -203,7 +203,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 ### 末影箱与潜影盒限制
 
 - `enderchest-max` 同时控制允许的潜影盒数量和动态显示的储物格。数值大于 9 时使用大界面；设置为 9 不会错误切换为 54 格 UI。
-- `/kitloader invmax` 会同步携带与个人 Kit 保存的潜影盒限制。
+- `/kitloader invmax` 会同步携带与个人 Kit 保存的潜影盒限制。`bypass-whitelist` 玩家仅绕过随身背包的 `inventory-max`，末影箱与 Kit 保存限制仍然生效。
 - 实时 `/inv` 编辑器在打开期间会同步目标玩家背包和末影箱的变更。
 
 ### 物品编辑

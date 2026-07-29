@@ -303,6 +303,8 @@ public class Kitloader extends JavaPlugin {
             sendMsg(p, "shulker_limit_enderchest", "max", String.valueOf(ecLimit));
         }
 
+        if (isBypassWhitelisted(p)) return;
+
         int invCount = 0;
         Inventory inv = p.getInventory();
         for (int i = 0; i < inv.getSize(); i++) {
@@ -393,7 +395,7 @@ public class Kitloader extends JavaPlugin {
 
     private void printStartupBanner() {
         getLogger().info("+====================================================+");
-        getLogger().info("|              KITLOADER MANAGEMENT                 |");
+        getLogger().info(centerBannerLine("KITLOADER MANAGEMENT v" + getDescription().getVersion()));
         getLogger().info("| Version / 版本 : " + getDescription().getVersion());
         getLogger().info("| Author  / 作者 : Lazyz");
         getLogger().info("| Tested  / 测试 : Paper & Folia 1.21.11");
@@ -401,6 +403,13 @@ public class Kitloader extends JavaPlugin {
         getLogger().info("| GitHub         : " + UpdateChecker.REPOSITORY_URL);
         getLogger().info("| Open source. No telemetry or server-data upload.   |");
         getLogger().info("+====================================================+");
+    }
+
+    private String centerBannerLine(String text) {
+        int width = 52;
+        int leftPadding = Math.max(0, (width - text.length()) / 2);
+        int rightPadding = Math.max(0, width - text.length() - leftPadding);
+        return "|" + " ".repeat(leftPadding) + text + " ".repeat(rightPadding) + "|";
     }
 
     private String applyPlaceholders(String text, String... placeholders) {

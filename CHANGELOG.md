@@ -4,6 +4,28 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.3] - 2026-07-29
+
+### Changed
+
+- Players in `bypass-whitelist` now bypass the carried `inventory-max` across background cleanup, ground pickup, GUI claims, and shared-Kit loading. Ender Chest and saved-Kit limits remain enforced.
+- The startup banner now appends the running version to the Kitloader display name.
+
+### Fixed
+
+- Template item pickup no longer relies on an uncancelled vanilla inventory transaction, so left-click claims continue to work while the player is moving or jumping. Shift, hotbar-key, and offhand shortcuts retain duplicate-pickup protection.
+
+## [2.0.3] - 2026-07-29（中文）
+
+### 变更
+
+- `bypass-whitelist` 白名单玩家现可在后台清理、地面拾取、GUI 领取及共享 Kit 加载时绕过随身背包 `inventory-max`；末影箱与 Kit 保存限制仍然生效。
+- 启动横幅会在 Kitloader 显示名称末尾附加当前运行版本号。
+
+### 修复
+
+- 模板物品左键领取不再依赖未取消的原版库存事务，玩家移动或跳跃时也能正常领取；Shift、数字键与副手快捷操作仍保留防重复领取锁。
+
 ## [2.0.2] - 2026-07-29
 
 ### Added

@@ -275,18 +275,10 @@ public class KitListener implements Listener {
                 return false;
             }
 
-            Inventory sourceInventory = event.getView().getTopInventory();
-            int sourceSlot = event.getRawSlot();
-            ItemStack displayTemplate = event.getCurrentItem() != null
-                    ? event.getCurrentItem().clone() : null;
-            event.setCurrentItem(pickupItem);
-            event.setCancelled(false);
+            player.setItemOnCursor(pickupItem);
             player.getScheduler().runDelayed(plugin, task -> {
                 templatePickupLocks.remove(player.getUniqueId());
-                if (displayTemplate != null
-                        && player.getOpenInventory().getTopInventory() == sourceInventory) {
-                    sourceInventory.setItem(sourceSlot, displayTemplate);
-                }
+                if (player.isOnline()) player.updateInventory();
             }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
             return true;
         }
@@ -492,6 +484,7 @@ public class KitListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPickup(org.bukkit.event.entity.EntityPickupItemEvent e) {
         if (!(e.getEntity() instanceof Player player)) return;
+        if (plugin.isBypassWhitelisted(player)) return;
         ItemStack item = e.getItem().getItemStack();
         if (item.getType().name().endsWith("SHULKER_BOX")) {
             List<String> specialWorlds = plugin.getConfig().getStringList("settings.shulker-limits.special-limit-worlds");
@@ -1507,7 +1500,7 @@ public class KitListener implements Listener {
                         }
                     }
 
-                    if (shulkers > limit) {
+                    if (!plugin.isBypassWhitelisted(player) && shulkers > limit) {
                         gui.setSkipNextClose(player); player.closeInventory();
                         plugin.sendMsg(player, "shulker_limit_inventory", "max", String.valueOf(limit));
                         return;
@@ -2755,7 +2748,7 @@ public class KitListener implements Listener {
                             for (ItemStack it : targetPk.items) {
                                 if (plugin.isKitloaderShulker(it)) shulkers += it.getAmount();
                             }
-                            if (shulkers > limit) {
+                            if (!plugin.isBypassWhitelisted(player) && shulkers > limit) {
                                 gui.setSkipNextClose(player); player.closeInventory();
                                 plugin.sendMsg(player, "shulker_limit_inventory", "max", String.valueOf(limit));
                                 return;
@@ -2810,7 +2803,8 @@ public class KitListener implements Listener {
                 }
 
                 ItemStack given = realItem.clone();
-                if (given.getType().name().endsWith("SHULKER_BOX")) {
+                if (!plugin.isBypassWhitelisted(player)
+                        && given.getType().name().endsWith("SHULKER_BOX")) {
                     List<String> specialWorlds = plugin.getConfig().getStringList("settings.shulker-limits.special-limit-worlds");
                     boolean inSpecialWorld = specialWorlds.contains(player.getWorld().getName());
                     int ecLimit = plugin.getConfig().getInt("settings.shulker-limits.enderchest-max", 9);
