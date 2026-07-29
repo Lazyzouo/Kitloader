@@ -74,6 +74,6 @@ The six naming and supply-policy options above are read at validation time. Appl
 
 ## Update behavior / 更新行为
 
-Only newer semantic versions are staged. The updater requests the latest Release from `Lazyzouo/Kitloader`, selects `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` according to `language`, caps the download at 50 MiB, requires GitHub's `sha256:` asset digest, and writes a verified file to Bukkit's update directory. Disable either update option if the server must not make outbound GitHub requests.
+Only newer semantic versions are staged. The updater requests the latest Release from `Lazyzouo/Kitloader`, selects `Kitloader-<latest-version>-en.us.jar` or `Kitloader-<latest-version>-zh.cn.jar` according to `language`, caps the download at 50 MiB, requires GitHub's `sha256:` asset digest, and writes a verified file to Bukkit's update directory. Disable either update option if the server must not make outbound GitHub requests.
 
-只会暂存更高的语义版本。更新器从 `Lazyzouo/Kitloader` 获取最新 Release，按 `language` 选择 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar`，限制下载为 50 MiB，要求 GitHub 的 `sha256:` 资源摘要，并将验证后的文件写入 Bukkit 更新目录。如服务器不能访问 GitHub，可关闭任一更新选项。
+只会暂存更高的语义版本。更新器从 `Lazyzouo/Kitloader` 获取最新 Release，按 `language` 选择 `Kitloader-<latest-version>-en.us.jar` 或 `Kitloader-<latest-version>-zh.cn.jar`，限制下载为 50 MiB，要求 GitHub 的 `sha256:` 资源摘要，并将验证后的文件写入 Bukkit 更新目录。如服务器不能访问 GitHub，可关闭任一更新选项。

@@ -267,62 +267,82 @@ public class KitListener implements Listener {
 
         ItemStack pickupItem = realItem.clone();
         plugin.markKitloaderShulker(pickupItem);
-
-        if (click == ClickType.LEFT) {
-            ItemStack cursor = event.getCursor();
-            if (cursor != null && !cursor.getType().isAir()) {
-                templatePickupLocks.remove(player.getUniqueId());
-                return false;
-            }
-
-            player.setItemOnCursor(pickupItem);
-            player.getScheduler().runDelayed(plugin, task -> {
-                templatePickupLocks.remove(player.getUniqueId());
-                if (player.isOnline()) player.updateInventory();
-            }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
-            return true;
-        }
-
-        boolean granted = false;
-        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
-            int requestedAmount = pickupItem.getAmount();
-            java.util.Map<Integer, ItemStack> remaining = player.getInventory().addItem(pickupItem);
-            int remainingAmount = remaining.values().stream().mapToInt(ItemStack::getAmount).sum();
-            granted = remainingAmount < requestedAmount;
-        } else if (click == ClickType.NUMBER_KEY) {
-            int hotbarSlot = event.getHotbarButton();
-            if (hotbarSlot >= 0 && hotbarSlot <= 8) {
-                ItemStack target = player.getInventory().getItem(hotbarSlot);
-                if (target == null || target.getType().isAir()) {
-                    player.getInventory().setItem(hotbarSlot, pickupItem);
-                    granted = true;
-                } else if (target.isSimilar(pickupItem)
-                        && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize()) {
-                    target.setAmount(target.getAmount() + pickupItem.getAmount());
-                    granted = true;
-                }
-            }
-        } else {
-            ItemStack target = player.getInventory().getItemInOffHand();
-            if (target == null || target.getType().isAir()) {
-                player.getInventory().setItemInOffHand(pickupItem);
-                granted = true;
-            } else if (target.isSimilar(pickupItem)
-                    && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize()) {
-                target.setAmount(target.getAmount() + pickupItem.getAmount());
-                player.getInventory().setItemInOffHand(target);
-                granted = true;
-            }
-        }
-
-        if (!granted) {
+        int hotbarSlot = event.getHotbarButton();
+        if (!canQueueTemplatePickup(player, click, hotbarSlot, pickupItem)) {
             templatePickupLocks.remove(player.getUniqueId());
             return false;
         }
+
         player.getScheduler().runDelayed(plugin, task -> {
-            templatePickupLocks.remove(player.getUniqueId());
+            try {
+                if (player.isOnline()) {
+                    grantTemplatePickup(player, click, hotbarSlot, pickupItem);
+                    player.updateInventory();
+                }
+            } finally {
+                templatePickupLocks.remove(player.getUniqueId());
+            }
         }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
         return true;
+    }
+
+    private boolean canQueueTemplatePickup(Player player, ClickType click, int hotbarSlot, ItemStack pickupItem) {
+        if (click == ClickType.LEFT) {
+            ItemStack cursor = player.getItemOnCursor();
+            return cursor == null || cursor.getType().isAir();
+        }
+        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
+            return canInventoryAccept(player.getInventory(), pickupItem);
+        }
+        if (click == ClickType.NUMBER_KEY) {
+            return hotbarSlot >= 0 && hotbarSlot <= 8
+                    && canStackInto(player.getInventory().getItem(hotbarSlot), pickupItem);
+        }
+        return canStackInto(player.getInventory().getItemInOffHand(), pickupItem);
+    }
+
+    private void grantTemplatePickup(Player player, ClickType click, int hotbarSlot, ItemStack pickupItem) {
+        ItemStack grantedItem = pickupItem.clone();
+        if (click == ClickType.LEFT) {
+            ItemStack cursor = player.getItemOnCursor();
+            if (cursor == null || cursor.getType().isAir()) player.setItemOnCursor(grantedItem);
+            return;
+        }
+        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
+            player.getInventory().addItem(grantedItem);
+            return;
+        }
+
+        ItemStack target = click == ClickType.NUMBER_KEY
+                ? player.getInventory().getItem(hotbarSlot)
+                : player.getInventory().getItemInOffHand();
+        if (!canStackInto(target, grantedItem)) return;
+        if (target == null || target.getType().isAir()) {
+            if (click == ClickType.NUMBER_KEY) player.getInventory().setItem(hotbarSlot, grantedItem);
+            else player.getInventory().setItemInOffHand(grantedItem);
+            return;
+        }
+
+        target.setAmount(target.getAmount() + grantedItem.getAmount());
+        if (click == ClickType.NUMBER_KEY) player.getInventory().setItem(hotbarSlot, target);
+        else player.getInventory().setItemInOffHand(target);
+    }
+
+    private boolean canInventoryAccept(Inventory inventory, ItemStack pickupItem) {
+        int remaining = pickupItem.getAmount();
+        for (ItemStack item : inventory.getStorageContents()) {
+            if (item == null || item.getType().isAir()) return true;
+            if (!item.isSimilar(pickupItem)) continue;
+            remaining -= Math.max(0, item.getMaxStackSize() - item.getAmount());
+            if (remaining <= 0) return true;
+        }
+        return false;
+    }
+
+    private boolean canStackInto(ItemStack target, ItemStack pickupItem) {
+        return target == null || target.getType().isAir()
+                || target.isSimilar(pickupItem)
+                && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize();
     }
 
     private boolean storeSupplyInConfiguredEnderChest(Player player, DataManager.PlayerData pData, ItemStack supply) {

@@ -387,22 +387,30 @@ public class Kitloader extends JavaPlugin {
                 .replace("{author}", getDescription().getAuthors().isEmpty()
                         ? "Unknown"
                         : getDescription().getAuthors().get(0));
-        message = languageManager.translateInline(message)
-                .replaceAll("(?i)&#[0-9a-f]{6}", "")
-                .replaceAll("(?i)&[0-9a-fk-or]", "");
-        getLogger().info(message);
+        String statusColor = switch (key) {
+            case "update_checking" -> "&b";
+            case "update_latest", "update_downloaded" -> "&a";
+            case "update_available", "update_manual" -> "&e";
+            case "update_failed" -> "&c";
+            default -> "&7";
+        };
+        logConsole(statusColor + message);
     }
 
     private void printStartupBanner() {
-        getLogger().info("+====================================================+");
-        getLogger().info(centerBannerLine("KITLOADER MANAGEMENT v" + getDescription().getVersion()));
-        getLogger().info("| Version / 版本 : " + getDescription().getVersion());
-        getLogger().info("| Author  / 作者 : Lazyz");
-        getLogger().info("| Tested  / 测试 : Paper & Folia 1.21.11");
-        getLogger().info("| Language/ 语言 : " + languageManager.getLanguage());
-        getLogger().info("| GitHub         : " + UpdateChecker.REPOSITORY_URL);
-        getLogger().info("| Open source. No telemetry or server-data upload.   |");
-        getLogger().info("+====================================================+");
+        logConsole("&3&l+====================================================+");
+        logConsole("&b&l" + centerBannerLine("KITLOADER MANAGEMENT v" + getDescription().getVersion()));
+        logConsole("&3&l| &fVersion / 版本 &8: &a" + getDescription().getVersion());
+        logConsole("&3&l| &fAuthor  / 作者 &8: &eLazyz");
+        logConsole("&3&l| &fTested  / 测试 &8: &aPaper & Folia 1.21.11");
+        logConsole("&3&l| &fLanguage/ 语言 &8: &b" + languageManager.getLanguage());
+        logConsole("&3&l| &fGitHub         &8: &9" + UpdateChecker.REPOSITORY_URL);
+        logConsole("&3&l| &aOpen source. &fNo telemetry or server-data upload.");
+        logConsole("&3&l+====================================================+");
+    }
+
+    private void logConsole(String message) {
+        getServer().getConsoleSender().sendMessage(color("&8[&bKitloader&8] &r" + message));
     }
 
     private String centerBannerLine(String text) {

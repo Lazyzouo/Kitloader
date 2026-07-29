@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.3
+**Version:** 2.0.4
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,8 +14,8 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-en.us.jar` | `en_US` | English servers |
-| `Kitloader-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.4-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.4-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
 
@@ -94,7 +94,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ### Item editor
 
-- Left click and Shift click claim/transfer supported items; right click opens the relevant editor when appropriate.
+- Left click and Shift click claim/transfer supported items; right click opens the relevant editor when appropriate. Claims are applied on the next player tick so movement and jumping cannot cause client inventory synchronization to discard them.
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.
 - The disposal area intentionally produces no destruction sound and no "silent" wording.
@@ -102,13 +102,15 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ## 5. Updating
 
-At startup, Kitloader compares its version with the latest official Release. When a newer version exists and auto-download is enabled, it selects `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` from the active `language`, rejects files over 50 MiB, verifies the GitHub `sha256:` asset digest, and puts the verified JAR in Bukkit's update directory. It never replaces the running JAR. If any update step fails, the console prints the official Release URL for manual download.
+The startup banner and all update-check states use colored console output.
+
+At startup, Kitloader compares its version with the latest official Release. When a newer version exists and auto-download is enabled, it selects `Kitloader-<latest-version>-en.us.jar` or `Kitloader-<latest-version>-zh.cn.jar` from the active `language`, rejects files over 50 MiB, verifies the GitHub `sha256:` asset digest, and puts the verified JAR in Bukkit's update directory. It never replaces the running JAR. If any update step fails, the console prints the official Release URL for manual download.
 
 Only download from [https://github.com/Lazyzouo/Kitloader/releases](https://github.com/Lazyzouo/Kitloader/releases). GitHub-generated source snapshots are not installation packages.
 
 ## 6. Release maintenance
 
-Every functional update must increment `build.gradle` version, update `CHANGELOG.md`, and update this guide when administrators need to know about new configuration, limits, compatibility, or logic. Major updates increment the major version. GitHub Actions builds the two language packages and publishes only `Kitloader-en.us.jar` and `Kitloader-zh.cn.jar` for a new version tag; source archives are not manually uploaded.
+Every functional update must increment `build.gradle` version, update `CHANGELOG.md`, and update this guide when administrators need to know about new configuration, limits, compatibility, or logic. Major updates increment the major version. GitHub Actions builds the two language packages and publishes only `Kitloader-<version>-en.us.jar` and `Kitloader-<version>-zh.cn.jar` for a new version tag; source archives are not manually uploaded.
 
 ---
 
@@ -116,7 +118,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.2
+**版本：**2.0.4
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -128,8 +130,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.4-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.4-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
 
@@ -208,18 +210,20 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 ### 物品编辑
 
-- 左键与 Shift 点击用于领取/转移支持的物品；适当情况下右键打开编辑界面。
+- 左键与 Shift 点击用于领取/转移支持的物品；适当情况下右键打开编辑界面。领取会在下一玩家刻写入，避免移动或跳跃产生的客户端库存同步覆盖领取结果。
 - 盔甲纹饰和原材料染色从可用项中随机选择，不再固定使用第一个。
 - 不兼容附魔会在冷却内拒绝，防止提示和拒绝音效刷屏。
 - 销毁区不播放销毁音效，也不显示“无声”字样。
 - 可见 Unicode 字符会在去除 Minecraft 颜色与格式代码后计数。官方默认物品名称 40 字符、个人/共享 Kit 与上传补给名称 18 字符，三项均可在 `settings.naming` 热修改；不可配置的 399 字符 Bukkit 展开安全线仍保留，达到 400 字符的持久化物品会在 ICUAC 扫描前递归删除。
 
 ## 5. 更新
+启动横幅与全部更新检查状态均使用彩色后台输出。
 
-启动时，Kitloader 会与最新官方 Release 比较版本。当存在新版本并启用自动下载时，会根据当前 `language` 选择 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar`，拒绝大于 50 MiB 的文件，验证 GitHub `sha256:` 资源摘要，并将验证后的 JAR 放到 Bukkit 更新目录。它绝不会替换正在运行的 JAR。任一步失败时，后台会打印官方 Release 地址供手动下载。
+
+启动时，Kitloader 会与最新官方 Release 比较版本。当存在新版本并启用自动下载时，会根据当前 `language` 选择 `Kitloader-<latest-version>-en.us.jar` 或 `Kitloader-<latest-version>-zh.cn.jar`，拒绝大于 50 MiB 的文件，验证 GitHub `sha256:` 资源摘要，并将验证后的 JAR 放到 Bukkit 更新目录。它绝不会替换正在运行的 JAR。任一步失败时，后台会打印官方 Release 地址供手动下载。
 
 只应从 [https://github.com/Lazyzouo/Kitloader/releases](https://github.com/Lazyzouo/Kitloader/releases) 下载。GitHub 自动生成的源码快照不是安装包。
 
 ## 6. 发布维护
 
-每次功能更新必须递增 `build.gradle` 版本、更新 `CHANGELOG.md`；如果管理员需要了解新的配置、限制、兼容性或逻辑，也必须更新本说明。重大更新递增主版本号。GitHub Actions 会构建两个语言包，并在新版本标签时只发布 `Kitloader-en.us.jar`、`Kitloader-zh.cn.jar`；不会手工上传源码压缩包。
+每次功能更新必须递增 `build.gradle` 版本、更新 `CHANGELOG.md`；如果管理员需要了解新的配置、限制、兼容性或逻辑，也必须更新本说明。重大更新递增主版本号。GitHub Actions 会构建两个语言包，并在新版本标签时只发布 `Kitloader-<version>-en.us.jar`、`Kitloader-<version>-zh.cn.jar`；不会手工上传源码压缩包。

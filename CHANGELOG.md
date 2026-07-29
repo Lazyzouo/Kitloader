@@ -4,6 +4,30 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.4] - 2026-07-29
+
+### Changed
+
+- The startup banner now renders every line through the colored console sender.
+- Update checking, latest-version, available-version, downloaded, manual-download, and failure notices now use distinct status colors.
+- Official JAR assets now include the plugin version before the language suffix, for example `Kitloader-2.0.4-en.us.jar`; the builder, updater, workflows, verification, and documentation share this format.
+
+### Fixed
+
+- Template claims now execute on the player's scheduler one tick after the cancelled GUI click and revalidate the cursor, inventory, hotbar, or offhand destination before writing. This prevents movement/jump inventory synchronization from discarding the claimed item.
+
+## [2.0.4] - 2026-07-29（中文）
+
+### 变更
+
+- 启动横幅的每一行现在都会通过支持颜色的后台发送器输出。
+- 检查更新、已是最新、发现新版、下载完成、手动下载及下载失败提示现在会使用不同的状态颜色。
+- 官方 JAR 资源现在会在语言后缀前包含插件版本号，例如 `Kitloader-2.0.4-zh.cn.jar`；构建器、更新器、工作流、校验与文档统一使用该格式。
+
+### 修复
+
+- 模板物品领取改为在取消 GUI 点击后的下一玩家刻执行，并在写入前重新检查光标、背包、快捷栏或副手目标，避免玩家移动或跳跃时的库存同步覆盖已领取物品。
+
 ## [2.0.3] - 2026-07-29
 
 ### Changed

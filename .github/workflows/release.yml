@@ -32,8 +32,9 @@ jobs:
       - name: Verify release assets
         shell: bash
         run: |
-          test -f build/libs/Kitloader-en.us.jar
-          test -f build/libs/Kitloader-zh.cn.jar
+          version="$(./gradlew -q properties --no-daemon | awk '/^version:/ {print $2}')"
+          test -f "build/libs/Kitloader-$version-en.us.jar"
+          test -f "build/libs/Kitloader-$version-zh.cn.jar"
           test "$(find build/libs -maxdepth 1 -type f -name '*.jar' | wc -l | tr -d ' ')" = "2"
       - name: Read version
         id: version
@@ -70,5 +71,5 @@ jobs:
           body_path: .github/release-notes.generated.md
           generate_release_notes: false
           files: |
-            build/libs/Kitloader-en.us.jar
-            build/libs/Kitloader-zh.cn.jar
+            build/libs/Kitloader-${{ steps.version.outputs.value }}-en.us.jar
+            build/libs/Kitloader-${{ steps.version.outputs.value }}-zh.cn.jar

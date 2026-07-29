@@ -10,8 +10,8 @@ Kitloader 彻底开源，不含后门、遥测或服务器数据收集机制。�
 
 ### Downloads / 下载
 
-- `Kitloader-en.us.jar`: English default package
-- `Kitloader-zh.cn.jar`: Simplified Chinese default package
+- `Kitloader-{{VERSION}}-en.us.jar`: English default package
+- `Kitloader-{{VERSION}}-zh.cn.jar`: Simplified Chinese default package
 
 GitHub-generated source snapshots are source only, not installation packages. See [CHANGELOG](https://github.com/Lazyzouo/Kitloader/blob/main/CHANGELOG.md) for release details.
 
