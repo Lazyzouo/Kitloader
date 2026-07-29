@@ -136,20 +136,43 @@ public class Kitloader extends JavaPlugin {
     }
 
     public void sanitizePlayerShulkers(Player player) {
+        int removedItems = 0;
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             ItemStack item = inventory.getItem(slot);
-            if (markKitloaderShulker(item)) inventory.setItem(slot, item);
+            CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(item);
+            removedItems += cleanup.removedItems();
+            if (cleanup.removeRoot()) {
+                inventory.setItem(slot, null);
+            } else if (cleanup.changed() || markKitloaderShulker(item)) {
+                inventory.setItem(slot, item);
+            }
         }
 
         Inventory enderChest = player.getEnderChest();
         for (int slot = 0; slot < enderChest.getSize(); slot++) {
             ItemStack item = enderChest.getItem(slot);
-            if (markKitloaderShulker(item)) enderChest.setItem(slot, item);
+            CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(item);
+            removedItems += cleanup.removedItems();
+            if (cleanup.removeRoot()) {
+                enderChest.setItem(slot, null);
+            } else if (cleanup.changed() || markKitloaderShulker(item)) {
+                enderChest.setItem(slot, item);
+            }
         }
 
         ItemStack cursor = player.getItemOnCursor();
-        if (markKitloaderShulker(cursor)) player.setItemOnCursor(cursor);
+        CustomNamePolicy.CleanupResult cursorCleanup = CustomNamePolicy.sanitizeItem(cursor);
+        removedItems += cursorCleanup.removedItems();
+        if (cursorCleanup.removeRoot()) {
+            player.setItemOnCursor(null);
+        } else if (cursorCleanup.changed() || markKitloaderShulker(cursor)) {
+            player.setItemOnCursor(cursor);
+        }
+
+        if (removedItems > 0) {
+            sendMsg(player, "custom_name_items_removed", "removed", String.valueOf(removedItems));
+        }
     }
 
     public boolean isRestrictedKitloaderPlayer(Player player) {

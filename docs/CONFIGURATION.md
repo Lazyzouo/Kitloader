@@ -42,8 +42,22 @@
 | `settings.shulker-limits.enderchest-max` | `9` | 末影箱潜影盒上限与动态 UI 容量 |
 | `settings.enchantments.rejection-cooldown-ms` | `1500` | 附魔冲突拒绝反馈的冷却时间 |
 
+## Fixed compatibility limits / 固定兼容限制
+
+These protections are gameplay rules, not configurable parameters:
+
+- Final custom display names are limited to 399 Bukkit characters after color-code expansion. Persisted items at 400 or more are recursively removed before display.
+- Uploaded supplies must fill 27 slots, cannot contain only one item type, and may use at most 16 occupied stacks of one similar item type. Custom names are ignored for similarity grouping.
+- Existing uploaded supplies violating these rules are removed from player files and public supply records when loaded.
+
+以下保护属于固定玩法规则，不是可配置参数：
+
+- 自定义最终显示名按颜色代码展开后的 Bukkit 字符串限制为 399 字符；达到 400 字符的持久化物品会在显示前递归删除。
+- 上传补给必须填满 27 格，不能整盒只有同一种物品，同一种相似物品最多占用 16 组；自定义名称不参与同类分组。
+- 加载时会从玩家文件和公共补给记录中删除不符合规则的现有上传补给。
+
 ## Update behavior / 更新行为
 
-Only newer semantic versions are staged. The updater requests the latest Release from `Lazyzouo/Kitloader`, selects `en.us.jar` or `zh.cn.jar` according to `language`, caps the download at 50 MiB, requires GitHub's `sha256:` asset digest, and writes a verified file to Bukkit's update directory. Disable either update option if the server must not make outbound GitHub requests.
+Only newer semantic versions are staged. The updater requests the latest Release from `Lazyzouo/Kitloader`, selects `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` according to `language`, caps the download at 50 MiB, requires GitHub's `sha256:` asset digest, and writes a verified file to Bukkit's update directory. Disable either update option if the server must not make outbound GitHub requests.
 
-只会暂存更高的语义版本。更新器从 `Lazyzouo/Kitloader` 获取最新 Release，按 `language` 选择 `en.us.jar` 或 `zh.cn.jar`，限制下载为 50 MiB，要求 GitHub 的 `sha256:` 资源摘要，并将验证后的文件写入 Bukkit 更新目录。如服务器不能访问 GitHub，可关闭任一更新选项。
+只会暂存更高的语义版本。更新器从 `Lazyzouo/Kitloader` 获取最新 Release，按 `language` 选择 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar`，限制下载为 50 MiB，要求 GitHub 的 `sha256:` 资源摘要，并将验证后的文件写入 Bukkit 更新目录。如服务器不能访问 GitHub，可关闭任一更新选项。

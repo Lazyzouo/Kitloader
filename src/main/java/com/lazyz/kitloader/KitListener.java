@@ -415,6 +415,27 @@ public class KitListener implements Listener {
         gui.clearUploadedSupplyTarget(player.getUniqueId());
     }
 
+    private boolean validateSupplyContents(Player player, ItemStack[] contents) {
+        CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItems(contents);
+        if (cleanup.removedItems() > 0) {
+            plugin.sendMsg(player, "custom_name_items_removed",
+                    "removed", String.valueOf(cleanup.removedItems()));
+        }
+        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents);
+        switch (result) {
+            case VALID -> {
+                return true;
+            }
+            case NOT_FULL -> plugin.sendMsg(player, "supply_inventory_not_full",
+                    "required", String.valueOf(SupplyContentPolicy.REQUIRED_FILLED_SLOTS));
+            case ALL_SAME -> plugin.sendMsg(player, "supply_all_same_rejected");
+            case TOO_MANY_SIMILAR -> plugin.sendMsg(player, "supply_similar_stack_limit",
+                    "max", String.valueOf(SupplyContentPolicy.MAX_SIMILAR_STACKS));
+            default -> plugin.sendMsg(player, "supply_invalid_box");
+        }
+        return false;
+    }
+
     private int getFilledSlots(Inventory inventory) {
         int count = 0;
         for (ItemStack item : inventory.getStorageContents()) {
@@ -553,6 +574,20 @@ public class KitListener implements Listener {
         if (pData != null && pData.isNaming()) {
             e.setCancelled(true);
             String coloredName = Kitloader.color(e.getMessage());
+
+            boolean kitName = (pData.publicEditSession != null && pData.publicEditSession.isNaming)
+                    || (pData.namingContext != null
+                    && (pData.namingContext.type == DataManager.NamingContext.Type.KIT_RENAME
+                    || pData.namingContext.type == DataManager.NamingContext.Type.ADMIN_KIT_RENAME
+                    || pData.namingContext.type == DataManager.NamingContext.Type.PUBLIC_KIT_RENAME));
+            boolean validName = kitName
+                    ? CustomNamePolicy.isValidKitName(coloredName)
+                    : CustomNamePolicy.isValidColoredDisplayName(coloredName);
+            if (!validName) {
+                plugin.sendMsg(player, "name_too_long",
+                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+                return;
+            }
 
             if (pData.editSession != null && pData.editSession.isNaming) {
                 pData.editSession.name = coloredName;
@@ -876,7 +911,20 @@ public class KitListener implements Listener {
         }
 
         if (cleanTitle.contains("编辑共享Kit:")) {
-            gui.clearPublicCache(player.getUniqueId());
+            String kitId = gui.getPublicTargetCache(player.getUniqueId());
+            DataManager.PublicKit kit = kitId == null ? null : data.publicKits.stream()
+                    .filter(candidate -> candidate.id.equals(kitId)).findFirst().orElse(null);
+            ItemStack[] currentKit = extractKitFromEditGui(e.getView().getTopInventory());
+            if (kit == null || !isKitChanged(kit.items, currentKit)) {
+                gui.clearPublicCache(player.getUniqueId());
+                player.getScheduler().run(plugin,
+                        task -> gui.openCategoryGui(player, "public_kits", 0), null);
+            } else {
+                gui.cachePublicKitEdit(player.getUniqueId(), currentKit);
+                gui.cachePublicTarget(player.getUniqueId(), kitId);
+                player.getScheduler().run(plugin,
+                        task -> gui.openConfirmAbandonPublicGui(player), null);
+            }
             return;
         }
 
@@ -1196,7 +1244,8 @@ public class KitListener implements Listener {
                     data.savePublicKits();
                     player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功永久删除该共享Kit！"));
                 }
-                gui.openMyPublicKitsGui(player);
+                gui.clearPublicCache(player.getUniqueId());
+                gui.openCategoryGui(player, "public_kits", 0);
             } else if (slot == 15) {
                 gui.openMyPublicKitsGui(player);
             }
@@ -1261,8 +1310,8 @@ public class KitListener implements Listener {
                     gui.clearPublicCache(player.getUniqueId());
                     gui.openCategoryGui(player, "public_kits", 0);
                 } else if (slot == 15) {
-                    DataManager.PublicKit pk = data.publicKits.stream().filter(k -> k.id.equals(kitId)).findFirst().orElse(null);
-                    if (pk != null) gui.openPublicKitEditGui(player, pk, true);
+                    gui.clearPublicCache(player.getUniqueId());
+                    gui.openCategoryGui(player, "public_kits", 0);
                 }
             }
             return;
@@ -1381,6 +1430,7 @@ public class KitListener implements Listener {
                     plugin.sendMsg(player, "supply_upload_limit", "limit", String.valueOf(limit));
                     gui.setSkipNextClose(player); player.closeInventory(); player.performCommand("kitloader"); return;
                 }
+                if (!validateSupplyContents(player, pData.editSession.items)) return;
                 ItemStack shulker = new ItemStack(pData.editSession.color);
                 BlockStateMeta meta = (BlockStateMeta) shulker.getItemMeta();
                 if (meta != null) {
@@ -2327,16 +2377,11 @@ public class KitListener implements Listener {
                     gui.openConfirmGui(player, "&#34495E&l确认放弃编辑？", "放弃编辑", "继续编辑");
                 }
             } else if (slot == 53) {
-                boolean hasItem = false;
                 for (int i = 0; i < 27; i++) {
                     ItemStack it = event.getView().getTopInventory().getItem(i);
                     pData.editSession.items[i] = (it != null) ? it.clone() : null;
-                    if (it != null && !it.getType().isAir()) hasItem = true;
                 }
-                if (!hasItem) {
-                    plugin.sendMsg(player, "supply_empty_upload");
-                    return;
-                }
+                if (!validateSupplyContents(player, pData.editSession.items)) return;
                 gui.openConfirmGui(player, "&#34495E&l确认上传补给？", "确认打包", "返回编辑");
             }
             return;
@@ -2358,6 +2403,7 @@ public class KitListener implements Listener {
                     gui.setSkipNextClose(player); player.closeInventory(); player.performCommand("kitloader"); return;
                 }
                 ItemStack shulker = new ItemStack(pData.editSession.color);
+                if (!validateSupplyContents(player, pData.editSession.items)) return;
                 BlockStateMeta meta = (BlockStateMeta) shulker.getItemMeta();
                 if (meta != null) {
                     meta.setDisplayName(Kitloader.color(pData.editSession.name));

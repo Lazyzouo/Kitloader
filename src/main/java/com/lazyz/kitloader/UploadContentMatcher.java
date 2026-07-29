@@ -70,6 +70,13 @@ final class UploadContentMatcher {
         return groups;
     }
 
+    static boolean sameItemIgnoringDisplayName(ItemStack first, ItemStack second) {
+        if (first == null || second == null || first.getType().isAir() || second.getType().isAir()) {
+            return false;
+        }
+        return normalizeItem(first).isSimilar(normalizeItem(second));
+    }
+
     private static ItemStack normalizeItem(ItemStack source) {
         ItemStack normalized = source.clone();
         ItemMeta rawMeta = normalized.getItemMeta();

@@ -60,7 +60,7 @@ public final class UpdateChecker {
                 return;
             }
 
-            String jarName = activeLanguageSuffix() + ".jar";
+            String jarName = "Kitloader-" + activeLanguageSuffix() + ".jar";
             ReleaseAsset jarAsset = findAsset(release.getAsJsonArray("assets"), jarName);
             Path updateDirectory = Bukkit.getUpdateFolderFile().toPath();
             Files.createDirectories(updateDirectory);

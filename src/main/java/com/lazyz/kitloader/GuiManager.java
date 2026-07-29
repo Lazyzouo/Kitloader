@@ -152,11 +152,53 @@ public class GuiManager {
 
                 try { guiConfig.save(guiFile); } catch (IOException ignored) {}
             }
+            CleanupStats categoryCleanup = sanitizeCategoryItems();
+            if (categoryCleanup.changed()) {
+                try { guiConfig.save(guiFile); } catch (IOException ignored) {}
+            }
+            if (categoryCleanup.removedItems() > 0) {
+                plugin.logLocalized("custom_name_cleanup_log", "scope", "gui_items.yml categories",
+                        "removed", String.valueOf(categoryCleanup.removedItems()), "renamed", "0");
+            }
             loadUploadedSupplyRecords();
         }
     }
 
+    private CleanupStats sanitizeCategoryItems() {
+        ConfigurationSection categories = guiConfig.getConfigurationSection("categories");
+        if (categories == null) return new CleanupStats(false, 0);
+
+        boolean changed = false;
+        int removedItems = 0;
+        for (String category : categories.getKeys(false)) {
+            List<?> rawItems = guiConfig.getList("categories." + category);
+            if (rawItems == null) continue;
+
+            boolean categoryChanged = false;
+            List<Object> cleanItems = new ArrayList<>(rawItems.size());
+            for (Object rawItem : rawItems) {
+                if (!(rawItem instanceof ItemStack item)) {
+                    cleanItems.add(rawItem);
+                    continue;
+                }
+
+                ItemStack cleanItem = item.clone();
+                CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(cleanItem);
+                categoryChanged |= cleanup.changed();
+                removedItems += cleanup.removedItems();
+                cleanItems.add(cleanup.removeRoot() ? null : cleanItem);
+            }
+            if (categoryChanged) {
+                guiConfig.set("categories." + category, cleanItems);
+                changed = true;
+            }
+        }
+        return new CleanupStats(changed, removedItems);
+    }
+
     private void loadUploadedSupplyRecords() {
+        int removedItems = 0;
+        int removedSupplies = 0;
         boolean changed = false;
         synchronized (uploadedSupplyLock) {
             uploadedSupplyRecords.clear();
@@ -177,6 +219,19 @@ public class GuiManager {
                 try {
                     UUID owner = UUID.fromString(ownerRaw);
                     ItemStack cleanItem = item.clone();
+                    CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(cleanItem);
+                    changed |= cleanup.changed();
+                    removedItems += cleanup.removedItems();
+                    if (cleanup.removeRoot()) {
+                        changed = true;
+                        continue;
+                    }
+                    if (SupplyContentPolicy.validateSupply(cleanItem)
+                            != SupplyContentPolicy.ValidationResult.VALID) {
+                        changed = true;
+                        removedSupplies++;
+                        continue;
+                    }
                     changed |= stripUploadedSupplyMetadata(cleanItem);
                     String uploadTimePath = path + ".uploadTime";
                     long uploadTime;
@@ -194,6 +249,14 @@ public class GuiManager {
                 }
             }
             sortUploadedSupplyRecords();
+        }
+        if (removedItems > 0) {
+            plugin.logLocalized("custom_name_cleanup_log", "scope", "gui_items.yml uploaded supplies",
+                    "removed", String.valueOf(removedItems), "renamed", "0");
+        }
+        if (removedSupplies > 0) {
+            plugin.logLocalized("supply_policy_cleanup_log", "scope", "gui_items.yml uploaded supplies",
+                    "removed", String.valueOf(removedSupplies));
         }
         if (changed) saveUploadedSupplyRecords();
     }
@@ -568,6 +631,8 @@ public class GuiManager {
     private ItemStack withoutUploadedSupplyMetadata(ItemStack item) {
         if (item == null) return null;
         ItemStack clone = item.clone();
+        CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(clone);
+        if (cleanup.removeRoot()) return null;
         stripUploadedSupplyMetadata(clone);
         return clone;
     }
@@ -636,6 +701,11 @@ public class GuiManager {
                 try {
                     UUID owner = UUID.fromString(metadata.owner);
                     ItemStack cleanItem = withoutUploadedSupplyMetadata(item);
+                    if (cleanItem == null || SupplyContentPolicy.validateSupply(cleanItem)
+                            != SupplyContentPolicy.ValidationResult.VALID) {
+                        changed = true;
+                        continue;
+                    }
                     synchronized (uploadedSupplyLock) {
                         uploadedSupplyRecords.putIfAbsent(metadata.id,
                                 new UploadedSupplyRecord(metadata.id, owner, metadata.hidden, cleanItem,
@@ -681,6 +751,9 @@ public class GuiManager {
     }
 
     public String prepareUploadedSupply(Player owner, ItemStack box, boolean visible) {
+        CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(box);
+        if (cleanup.removeRoot()) return null;
+        if (SupplyContentPolicy.validateSupply(box) != SupplyContentPolicy.ValidationResult.VALID) return null;
         stripUploadedSupplyMetadata(box);
         String supplyId = UUID.randomUUID().toString();
         synchronized (uploadedSupplyLock) {
@@ -795,6 +868,8 @@ public class GuiManager {
     public boolean updateUploadedSupply(String supplyId, UUID ownerId, boolean hidden, ItemStack item) {
         if (supplyId == null || supplyId.isBlank() || item == null || item.getType().isAir()) return false;
         ItemStack cleanItem = createUploadedSupplyDeliveryCopy(item);
+        if (cleanItem == null) return false;
+        if (SupplyContentPolicy.validateSupply(cleanItem) != SupplyContentPolicy.ValidationResult.VALID) return false;
         synchronized (uploadedSupplyLock) {
             UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
             if (record != null && !record.owner.equals(ownerId)) return false;
@@ -1399,7 +1474,7 @@ public class GuiManager {
     public void openConfirmDeletePlayerGui(Player player) { openConfirmGui(player, T_DEL_PLAYER, "确认永久删除", "取消操作并返回"); }
     public void openConfirmSaveAdminGui(Player player) { openConfirmGui(player, T_SAVE_ADMIN, "保存修改并返回", "放弃修改并返回"); }
     public void openConfirmDeleteAdminGui(Player player) { openConfirmGui(player, T_DEL_ADMIN, "确认永久删除", "取消"); }
-    public void openConfirmSavePublicGui(Player player) { openConfirmGui(player, T_SAVE_PUB, "保存修改并返回", "返回继续编辑"); }
+    public void openConfirmSavePublicGui(Player player) { openConfirmGui(player, T_SAVE_PUB, "保存修改并返回", "放弃修改并返回"); }
     public void openConfirmDeletePublicGui(Player player, String id) {
         cachePublicTarget(player.getUniqueId(), id);
         openConfirmGui(player, T_DEL_PUB, "确认永久删除", "取消并返回");
@@ -1548,7 +1623,17 @@ public class GuiManager {
                 for (int i = 0; i < 36; i++) allItems.set(startIndex + i, pageContents[i] != null ? pageContents[i].clone() : null);
 
                 List<ItemStack> compacted = new ArrayList<>();
-                for (ItemStack item : allItems) if (item != null && !item.getType().isAir()) compacted.add(item);
+                int removedItems = 0;
+                for (ItemStack item : allItems) {
+                    if (item == null || item.getType().isAir()) continue;
+                    CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(item);
+                    removedItems += cleanup.removedItems();
+                    if (!cleanup.removeRoot()) compacted.add(item);
+                }
+                if (removedItems > 0) {
+                    plugin.logLocalized("custom_name_cleanup_log", "scope", "gui_items.yml category save",
+                            "removed", String.valueOf(removedItems), "renamed", "0");
+                }
 
                 guiConfig.set("categories." + category, compacted);
                 try { guiConfig.save(guiFile); loadGuiConfig(); } catch (IOException ignored) {}
@@ -1808,6 +1893,9 @@ public class GuiManager {
             this.owner = owner;
             this.hidden = hidden;
         }
+    }
+
+    private record CleanupStats(boolean changed, int removedItems) {
     }
 
     private static final class UploadedSupplyRecord {

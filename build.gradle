@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.lazyz'
-version = '2.0.0'
+version = '2.0.1'
 def pluginAuthor = 'Lazyz'
 
 repositories {
@@ -53,7 +53,7 @@ processResources {
 }
 
 tasks.named('jar') {
-    archiveFileName.set('zh.cn.jar')
+    archiveFileName.set('Kitloader-zh.cn.jar')
     exclude 'config.yml'
     from('presets/config.zh_CN.yml') {
         rename { 'config.yml' }
@@ -63,7 +63,7 @@ tasks.named('jar') {
 
 tasks.register('englishJar', Jar) {
     dependsOn classes
-    archiveFileName.set('en.us.jar')
+    archiveFileName.set('Kitloader-en.us.jar')
     from(sourceSets.main.output) {
         exclude 'config.yml'
     }

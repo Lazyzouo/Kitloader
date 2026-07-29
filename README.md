@@ -18,8 +18,8 @@ Download only from [official Releases](https://github.com/Lazyzouo/Kitloader/rel
 
 | Asset | Default language | Use |
 | --- | --- | --- |
-| `en.us.jar` | English (`en_US`) | English server default package |
-| `zh.cn.jar` | Simplified Chinese (`zh_CN`) | Simplified Chinese server default package |
+| `Kitloader-en.us.jar` | English (`en_US`) | English server default package |
+| `Kitloader-zh.cn.jar` | Simplified Chinese (`zh_CN`) | Simplified Chinese server default package |
 
 GitHub may display automatically generated source snapshots. They are source archives, not plugin installation packages. The only supported plugin downloads are the two JAR files above.
 
@@ -27,8 +27,8 @@ GitHub may display automatically generated source snapshots. They are source arc
 
 | 资源 | 默认语言 | 用途 |
 | --- | --- | --- |
-| `en.us.jar` | English (`en_US`) | 英文默认包 |
-| `zh.cn.jar` | Simplified Chinese (`zh_CN`) | 简体中文默认包 |
+| `Kitloader-en.us.jar` | English (`en_US`) | 英文默认包 |
+| `Kitloader-zh.cn.jar` | Simplified Chinese (`zh_CN`) | 简体中文默认包 |
 
 GitHub 可能显示自动生成的源码快照。它们只是源码压缩包，不是插件安装包；仅上表两个 JAR 为受支持的下载文件。
 
@@ -36,18 +36,18 @@ GitHub 可能显示自动生成的源码快照。它们只是源码压缩包，�
 
 - Personal Kit save, load, rename, delete, list, limits, and single-use-world protection.
 - Shared Kit upload and management with full-inventory, duplicate-content, and upload-count validation.
-- Custom shulker supply upload, visibility controls, time ordering, duplicate-content protection, and instantly refreshed public pages.
+- Full 27-slot custom supply uploads with duplicate protection, all-one-type rejection, a 16-stack similar-item cap, visibility controls, time ordering, and instantly refreshed public pages.
 - Dynamic Ender Chest interfaces, configurable unlocked slots, and dedicated supply delivery handling.
 - `/inv` live inventory and Ender Chest editor; `/regear <player> list` online/offline uploaded-supply manager.
-- Armor-trim, dye, item-name, and enchantment editing with conflict rate limiting.
+- Armor-trim, dye, item-name, and enchantment editing with conflict rate limiting plus ICUAC-compatible 399-character final-name enforcement and recursive legacy cleanup.
 - Chinese and English runtime modes, automatic official update checks, SHA-256 verified staged downloads, and Folia-aware scheduling.
 
 - 个人 Kit 保存、加载、重命名、删除、列表、数量限制及单次使用世界保护。
 - 共享 Kit 上传与管理，具备满背包、相同内容和上传数量校验。
-- 自定义潜影盒补给上传、公开/隐藏、按时间排序、重复内容拦截，以及公共页面即时刷新。
+- 自定义潜影盒补给要求填满 27 格，拦截重复内容、整盒全同和同类超过 16 组，并支持公开/隐藏、按时间排序与公共页面即时刷新。
 - 动态末影箱界面、可配置开放格数和补给直存处理。
 - `/inv` 实时背包与末影箱编辑；`/regear <玩家> list` 在线/离线上传补给管理。
-- 盔甲纹饰、染色、物品命名和附魔编辑，附带冲突提示防刷屏。
+- 盔甲纹饰、染色、物品命名和附魔编辑，附带冲突提示防刷屏、ICUAC 兼容的 399 字符最终名称限制及旧数据递归清理。
 - 中英文运行模式、官方更新检测、SHA-256 校验的暂存下载和 Folia 调度适配。
 
 ## Requirements / 运行要求
@@ -68,21 +68,21 @@ GitHub 可能显示自动生成的源码快照。它们只是源码压缩包，�
 
 ## Installation / 安装
 
-1. Download `en.us.jar` or `zh.cn.jar` from the [official Releases page](https://github.com/Lazyzouo/Kitloader/releases).
+1. Download `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` from the [official Releases page](https://github.com/Lazyzouo/Kitloader/releases).
 2. Put exactly one language package in the server `plugins/` directory.
 3. Start the server once. Kitloader creates its data folder and the selected official default `config.yml`.
 4. Configure the generated `plugins/Kitloader/config.yml`, then run `/kitloader reload` or restart the server.
 
-1. 从[官方 Releases 页面](https://github.com/Lazyzouo/Kitloader/releases)下载 `en.us.jar` 或 `zh.cn.jar`。
+1. 从[官方 Releases 页面](https://github.com/Lazyzouo/Kitloader/releases)下载 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar`。
 2. 只将一个语言包放进服务端 `plugins/` 目录。
 3. 启动一次服务器，Kitloader 会创建数据目录与所选语言包对应的官方默认 `config.yml`。
 4. 修改生成的 `plugins/Kitloader/config.yml`，然后执行 `/kitloader reload` 或重启服务器。
 
 ## Updates / 更新
 
-The official presets enable `updates.enabled` and `updates.auto-download`. At startup, Kitloader checks the latest official Release. When a newer version exists, it downloads only the matching `en.us.jar` or `zh.cn.jar` into the Bukkit update folder, verifies the GitHub-provided SHA-256 digest, and installs it on the next restart. A failure never replaces the running JAR and prints the official Releases URL for manual download.
+The official presets enable `updates.enabled` and `updates.auto-download`. At startup, Kitloader checks the latest official Release. When a newer version exists, it downloads only the matching `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` into the Bukkit update folder, verifies the GitHub-provided SHA-256 digest, and installs it on the next restart. A failure never replaces the running JAR and prints the official Releases URL for manual download.
 
-官方预设默认启用 `updates.enabled` 与 `updates.auto-download`。服务器启动时，Kitloader 会检查最新官方 Release。发现新版本后，只下载对应的 `en.us.jar` 或 `zh.cn.jar` 到 Bukkit 更新目录，校验 GitHub 提供的 SHA-256 摘要，并在下次重启安装。更新失败不会替换正在使用的 JAR，并会在后台提示官方 Releases 地址供服主手动下载。
+官方预设默认启用 `updates.enabled` 与 `updates.auto-download`。服务器启动时，Kitloader 会检查最新官方 Release。发现新版本后，只下载对应的 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar` 到 Bukkit 更新目录，校验 GitHub 提供的 SHA-256 摘要，并在下次重启安装。更新失败不会替换正在使用的 JAR，并会在后台提示官方 Releases 地址供服主手动下载。
 
 ## Configuration and Operations / 配置与运维
 

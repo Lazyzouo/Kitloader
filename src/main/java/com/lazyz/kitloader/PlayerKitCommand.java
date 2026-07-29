@@ -111,6 +111,11 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
             String oldName = args[1];
             String newName = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
 
+            if (!CustomNamePolicy.isValidKitName(newName)) {
+                plugin.sendMsg(player, "name_too_long",
+                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+                return true;
+            }
             if (!pData.kits.containsKey(oldName)) {
                 plugin.sendMsg(player, "kit_not_found", "kit", oldName);
                 return true;
@@ -130,6 +135,11 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
         if (subCmd.equals("save") && args.length >= 2) {
             String kitName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
+            if (!CustomNamePolicy.isValidKitName(kitName)) {
+                plugin.sendMsg(player, "name_too_long",
+                        "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH));
+                return true;
+            }
             boolean isEmpty = true;
             for (ItemStack item : player.getInventory().getContents()) {
                 if (item != null && !item.getType().isAir()) {

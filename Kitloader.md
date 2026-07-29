@@ -2,7 +2,8 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.0  
+**Version:** 2.0.1
+
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
 **Author:** Lazyz
@@ -13,8 +14,8 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `en.us.jar` | `en_US` | English servers |
-| `zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-en.us.jar` | `en_US` | English servers |
+| `Kitloader-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
 
@@ -68,10 +69,12 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 - Upload requires all 36 storage slots to be filled; armor and offhand are ignored.
 - Content matching prevents duplicate shared Kits even if names or item display names change.
 - Upload counts are enforced per player. Shared Kit management allows edit, rename, publication, and deletion.
+- Leaving the shared-Kit editor now compares the working copy: unchanged edits return directly, while changed edits offer save/discard controls; ESC/E opens a discard confirmation instead of closing every Kitloader UI.
 
 ### Custom supplies
 
-- Upload requires a non-empty shulker box, rejects nested shulker boxes, checks per-player limits, and rejects equivalent contents.
+- Upload requires all 27 shulker slots to be filled, rejects nested shulker boxes and all-one-type contents, limits one similar item type to 16 occupied stacks, checks per-player limits, and rejects equivalent uploads. Renaming does not bypass item grouping.
+- Existing uploaded supplies that violate the full-box, all-one-type, or 16-similar-stack rules are removed from player data and public records during load.
 - Uploads and public supply entries are ordered by upload time.
 - A hidden supply is removed immediately from every public page, including the owner's public page, and cannot be claimed there. It remains editable in uploaded-supply management.
 - Publishing a hidden supply appends it at the end of the public supply sequence and refreshes open supply pages.
@@ -88,16 +91,17 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.
 - The disposal area intentionally produces no destruction sound and no "silent" wording.
+- Custom item/supply names and decorated Kit labels are limited to 399 final Bukkit characters after color expansion. Existing persisted items at 400 or more characters are recursively removed from Kits, shulker/container snapshots, bundles, GUI categories, and uploaded supplies before ICUAC can scan them.
 
 ## 5. Updating
 
-At startup, Kitloader compares its version with the latest official Release. When a newer version exists and auto-download is enabled, it selects `en.us.jar` or `zh.cn.jar` from the active `language`, rejects files over 50 MiB, verifies the GitHub `sha256:` asset digest, and puts the verified JAR in Bukkit's update directory. It never replaces the running JAR. If any update step fails, the console prints the official Release URL for manual download.
+At startup, Kitloader compares its version with the latest official Release. When a newer version exists and auto-download is enabled, it selects `Kitloader-en.us.jar` or `Kitloader-zh.cn.jar` from the active `language`, rejects files over 50 MiB, verifies the GitHub `sha256:` asset digest, and puts the verified JAR in Bukkit's update directory. It never replaces the running JAR. If any update step fails, the console prints the official Release URL for manual download.
 
 Only download from [https://github.com/Lazyzouo/Kitloader/releases](https://github.com/Lazyzouo/Kitloader/releases). GitHub-generated source snapshots are not installation packages.
 
 ## 6. Release maintenance
 
-Every functional update must increment `build.gradle` version, update `CHANGELOG.md`, and update this guide when administrators need to know about new configuration, limits, compatibility, or logic. Major updates increment the major version. GitHub Actions builds the two language packages and publishes only `en.us.jar` and `zh.cn.jar` for a new version tag; source archives are not manually uploaded.
+Every functional update must increment `build.gradle` version, update `CHANGELOG.md`, and update this guide when administrators need to know about new configuration, limits, compatibility, or logic. Major updates increment the major version. GitHub Actions builds the two language packages and publishes only `Kitloader-en.us.jar` and `Kitloader-zh.cn.jar` for a new version tag; source archives are not manually uploaded.
 
 ---
 
@@ -105,7 +109,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.0  
+**版本：**2.0.1
+
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
 **作者：**Lazyz
@@ -116,8 +121,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `en.us.jar` | `en_US` | 英文服务器 |
-| `zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
 
@@ -171,10 +176,12 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 - 上传必须填满 36 个储物格；盔甲和副手不参与判断。
 - 内容匹配会阻止相同共享 Kit，即使修改 Kit 名称或物品显示名也不能绕过。
 - 上传数量按玩家限制；管理页面可编辑、重命名、公开及删除。
+- 离开共享 Kit 编辑页时会比较工作副本：无改动直接返回，有改动则可保存或放弃；按 ESC/E 会打开放弃确认，不再直接关闭全部 Kitloader UI。
 
 ### 自定义补给
 
-- 上传要求潜影盒非空，禁止盒中盒，检查每人上限，并拒绝内容等价的补给。
+- 上传要求潜影盒 27 格全部填满，禁止盒中盒、整盒只有同一种物品，并限制同一种相似物品最多占用 16 组；同时检查每人上限和内容重复。重命名不能绕过同类分组。
+- 加载数据时会从玩家数据和公共记录中删除不符合全满、全同或 16 组限制的现有上传补给。
 - 上传补给与公共补给按上传时间排序。
 - 隐藏补给会立即从所有公共页移除，包括上传者自己的公共页，且不能在公共页领取；仍可在已上传补给管理页编辑。
 - 重新公开时会排列到公共补给末尾，并刷新已打开的补给页。
@@ -191,13 +198,14 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 - 盔甲纹饰和原材料染色从可用项中随机选择，不再固定使用第一个。
 - 不兼容附魔会在冷却内拒绝，防止提示和拒绝音效刷屏。
 - 销毁区不播放销毁音效，也不显示“无声”字样。
+- 自定义物品/补给名称及带装饰的 Kit 名称，按颜色代码展开后的 Bukkit 最终字符串限制为 399 字符。现有达到 400 字符的持久化物品会在 ICUAC 扫描前，从 Kit、潜影盒/容器快照、收纳袋、GUI 分类和上传补给中递归删除。
 
 ## 5. 更新
 
-启动时，Kitloader 会与最新官方 Release 比较版本。当存在新版本并启用自动下载时，会根据当前 `language` 选择 `en.us.jar` 或 `zh.cn.jar`，拒绝大于 50 MiB 的文件，验证 GitHub `sha256:` 资源摘要，并将验证后的 JAR 放到 Bukkit 更新目录。它绝不会替换正在运行的 JAR。任一步失败时，后台会打印官方 Release 地址供手动下载。
+启动时，Kitloader 会与最新官方 Release 比较版本。当存在新版本并启用自动下载时，会根据当前 `language` 选择 `Kitloader-en.us.jar` 或 `Kitloader-zh.cn.jar`，拒绝大于 50 MiB 的文件，验证 GitHub `sha256:` 资源摘要，并将验证后的 JAR 放到 Bukkit 更新目录。它绝不会替换正在运行的 JAR。任一步失败时，后台会打印官方 Release 地址供手动下载。
 
 只应从 [https://github.com/Lazyzouo/Kitloader/releases](https://github.com/Lazyzouo/Kitloader/releases) 下载。GitHub 自动生成的源码快照不是安装包。
 
 ## 6. 发布维护
 
-每次功能更新必须递增 `build.gradle` 版本、更新 `CHANGELOG.md`；如果管理员需要了解新的配置、限制、兼容性或逻辑，也必须更新本说明。重大更新递增主版本号。GitHub Actions 会构建两个语言包，并在新版本标签时只发布 `en.us.jar`、`zh.cn.jar`；不会手工上传源码压缩包。
+每次功能更新必须递增 `build.gradle` 版本、更新 `CHANGELOG.md`；如果管理员需要了解新的配置、限制、兼容性或逻辑，也必须更新本说明。重大更新递增主版本号。GitHub Actions 会构建两个语言包，并在新版本标签时只发布 `Kitloader-en.us.jar`、`Kitloader-zh.cn.jar`；不会手工上传源码压缩包。

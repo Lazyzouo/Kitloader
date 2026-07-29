@@ -32,8 +32,8 @@ jobs:
       - name: Verify release assets
         shell: bash
         run: |
-          test -f build/libs/en.us.jar
-          test -f build/libs/zh.cn.jar
+          test -f build/libs/Kitloader-en.us.jar
+          test -f build/libs/Kitloader-zh.cn.jar
           test "$(find build/libs -maxdepth 1 -type f -name '*.jar' | wc -l | tr -d ' ')" = "2"
       - name: Read version
         id: version
@@ -52,7 +52,15 @@ jobs:
       - name: Prepare bilingual release notes
         if: steps.tag.outputs.new_release == 'true'
         shell: bash
-        run: sed "s/{{VERSION}}/${{ steps.version.outputs.value }}/g" .github/release-notes.md > .github/release-notes.generated.md
+        run: |
+          version="${{ steps.version.outputs.value }}"
+          sed "s/{{VERSION}}/$version/g" .github/release-notes.md > .github/release-notes.generated.md
+          printf '\n### Changelog / 更新日志\n\n' >> .github/release-notes.generated.md
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { capture = 1 }
+            capture && $0 ~ "^## \\[" && $0 !~ "^## \\[" version "\\]" { exit }
+            capture { print }
+          ' CHANGELOG.md >> .github/release-notes.generated.md
       - name: Publish GitHub Release
         if: steps.tag.outputs.new_release == 'true'
         uses: softprops/action-gh-release@v2
@@ -62,5 +70,5 @@ jobs:
           body_path: .github/release-notes.generated.md
           generate_release_notes: false
           files: |
-            build/libs/en.us.jar
-            build/libs/zh.cn.jar
+            build/libs/Kitloader-en.us.jar
+            build/libs/Kitloader-zh.cn.jar

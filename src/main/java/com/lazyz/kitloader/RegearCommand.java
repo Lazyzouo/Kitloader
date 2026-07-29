@@ -468,6 +468,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             }
         }
 
+        if (!validateSupplyContents(admin, editor.contents)) return;
         ItemStack updated = editor.original.clone();
         updated.setType(editor.material);
         ItemMeta rawMeta = updated.getItemMeta();
@@ -522,12 +523,18 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         event.setCancelled(true);
 
         String newName = event.getMessage().trim();
-        String visibleName = ChatColor.stripColor(Kitloader.color(newName));
+        String coloredName = Kitloader.color(newName);
+        String visibleName = ChatColor.stripColor(coloredName);
         if (newName.isEmpty() || visibleName == null || visibleName.isBlank() || visibleName.length() > 50) {
             admin.getScheduler().run(plugin, task -> plugin.sendMsg(admin, "regear_name_invalid"), null);
             return;
         }
-        session.editor.displayName = Kitloader.color(newName);
+        if (!CustomNamePolicy.isValidColoredDisplayName(coloredName)) {
+            admin.getScheduler().run(plugin, task -> plugin.sendMsg(admin, "name_too_long",
+                    "max", String.valueOf(CustomNamePolicy.MAX_DISPLAY_NAME_LENGTH)), null);
+            return;
+        }
+        session.editor.displayName = coloredName;
         session.awaitingName = false;
         admin.getScheduler().run(plugin, task -> {
             plugin.sendMsg(admin, "regear_name_updated");
@@ -605,6 +612,27 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                     && index < targetData.uploadedSupplies.size()) return index;
         }
         return -1;
+    }
+
+    private boolean validateSupplyContents(Player admin, ItemStack[] contents) {
+        CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItems(contents);
+        if (cleanup.removedItems() > 0) {
+            plugin.sendMsg(admin, "custom_name_items_removed",
+                    "removed", String.valueOf(cleanup.removedItems()));
+        }
+        SupplyContentPolicy.ValidationResult result = SupplyContentPolicy.validateContents(contents);
+        switch (result) {
+            case VALID -> {
+                return true;
+            }
+            case NOT_FULL -> plugin.sendMsg(admin, "supply_inventory_not_full",
+                    "required", String.valueOf(SupplyContentPolicy.REQUIRED_FILLED_SLOTS));
+            case ALL_SAME -> plugin.sendMsg(admin, "supply_all_same_rejected");
+            case TOO_MANY_SIMILAR -> plugin.sendMsg(admin, "supply_similar_stack_limit",
+                    "max", String.valueOf(SupplyContentPolicy.MAX_SIMILAR_STACKS));
+            default -> plugin.sendMsg(admin, "supply_invalid_box");
+        }
+        return false;
     }
 
     private boolean isShulker(ItemStack item) {

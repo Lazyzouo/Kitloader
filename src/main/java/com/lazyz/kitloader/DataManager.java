@@ -69,11 +69,16 @@ public class DataManager {
                 publicKits.add(pk);
             }
         }
+        CleanupSummary cleanup = sanitizePublicKitData();
+        changed |= cleanup.changed();
+        logCustomNameCleanup("public_kits.yml", cleanup);
         sortPublicKits();
         if (changed) savePublicKits();
     }
 
-    public void savePublicKits() {
+    public synchronized void savePublicKits() {
+        CleanupSummary cleanup = sanitizePublicKitData();
+        logCustomNameCleanup("public_kits.yml", cleanup);
         sortPublicKits();
         long saveVersion = publicKitSaveVersion.incrementAndGet();
         List<PublicKit> snapshot = new ArrayList<>();
@@ -110,6 +115,16 @@ public class DataManager {
                 if (!player.isOnline() || cache.get(player.getUniqueId()) != data) return;
                 GuiManager guiManager = plugin.getGuiManager();
                 if (guiManager != null) guiManager.ensureUploadedSupplyMetadata(player, data);
+                if (data.pendingRemovedCustomNameItems > 0) {
+                    plugin.sendMsg(player, "custom_name_items_removed",
+                            "removed", String.valueOf(data.pendingRemovedCustomNameItems));
+                    data.pendingRemovedCustomNameItems = 0;
+                }
+                if (data.pendingRemovedInvalidSupplies > 0) {
+                    plugin.sendMsg(player, "supply_policy_existing_removed",
+                            "removed", String.valueOf(data.pendingRemovedInvalidSupplies));
+                    data.pendingRemovedInvalidSupplies = 0;
+                }
             }, null);
         });
     }
@@ -199,10 +214,17 @@ public class DataManager {
                 }
             }
         }
+        CleanupSummary cleanup = sanitizePlayerData(data);
+        logSupplyCleanup(uuid + ".yml", cleanup);
+        logCustomNameCleanup(uuid + ".yml", cleanup);
+        if (cleanup.changed()) saveOfflinePlayerAsync(data);
         return data;
     }
 
     public void saveOfflinePlayerAsync(PlayerData data) {
+        CleanupSummary cleanup = sanitizePlayerData(data);
+        logSupplyCleanup(data.uuid + ".yml", cleanup);
+        logCustomNameCleanup(data.uuid + ".yml", cleanup);
         UUID uuid = data.uuid;
         long saveVersion = saveVersions.merge(uuid, 1L, Long::sum);
         boolean hasUsedSnapshot = data.hasUsed;
@@ -324,6 +346,135 @@ public class DataManager {
         return clone;
     }
 
+    private CleanupSummary sanitizePublicKitData() {
+        boolean changed = false;
+        int removedItems = 0;
+        int renamedNames = 0;
+        Set<String> usedNames = new HashSet<>();
+
+        for (PublicKit kit : publicKits) {
+            CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(kit.items);
+            changed |= itemCleanup.changed();
+            removedItems += itemCleanup.removedItems();
+
+            if (!CustomNamePolicy.isValidKitName(kit.kitName)) {
+                kit.kitName = nextSafeKitName("Recovered Shared Kit", usedNames);
+                changed = true;
+                renamedNames++;
+            }
+            usedNames.add(kit.kitName);
+        }
+        return new CleanupSummary(changed, removedItems, renamedNames, 0);
+    }
+
+    private CleanupSummary sanitizePlayerData(PlayerData data) {
+        synchronized (data) {
+            boolean changed = false;
+            int removedItems = 0;
+            int renamedNames = 0;
+            int removedSupplies = 0;
+
+            Map<String, ItemStack[]> cleanKits = new LinkedHashMap<>();
+            for (Map.Entry<String, ItemStack[]> entry : data.kits.entrySet()) {
+                String name = entry.getKey();
+                if (!CustomNamePolicy.isValidKitName(name) || cleanKits.containsKey(name)) {
+                    name = nextSafeKitName("Recovered Kit", cleanKits.keySet());
+                    changed = true;
+                    renamedNames++;
+                }
+
+                ItemStack[] items = entry.getValue();
+                CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(items);
+                changed |= itemCleanup.changed();
+                removedItems += itemCleanup.removedItems();
+                cleanKits.put(name, items);
+            }
+            if (changed || !data.kits.keySet().equals(cleanKits.keySet())) data.kits = cleanKits;
+
+            for (int index = 0; index < data.uploadedSupplies.size();) {
+                ItemStack supply = data.uploadedSupplies.get(index);
+                CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItem(supply);
+                changed |= itemCleanup.changed();
+                removedItems += itemCleanup.removedItems();
+
+                boolean removeSupply = itemCleanup.removeRoot();
+                if (!removeSupply && SupplyContentPolicy.validateSupply(supply)
+                        != SupplyContentPolicy.ValidationResult.VALID) {
+                    removeSupply = true;
+                    removedSupplies++;
+                }
+                if (removeSupply) {
+                    changed = true;
+                    data.uploadedSupplies.remove(index);
+                    if (index < data.uploadedSupplyIds.size()) data.uploadedSupplyIds.remove(index);
+                    continue;
+                }
+                index++;
+            }
+            while (data.uploadedSupplyIds.size() > data.uploadedSupplies.size()) {
+                data.uploadedSupplyIds.remove(data.uploadedSupplyIds.size() - 1);
+                changed = true;
+            }
+            while (data.uploadedSupplyIds.size() < data.uploadedSupplies.size()) {
+                data.uploadedSupplyIds.add("");
+                changed = true;
+            }
+
+            if (data.editSession != null) {
+                CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(data.editSession.items);
+                changed |= itemCleanup.changed();
+                removedItems += itemCleanup.removedItems();
+                if (!CustomNamePolicy.isValidColoredDisplayName(Kitloader.color(data.editSession.name))) {
+                    data.editSession.name = "Shulker Box";
+                    changed = true;
+                    renamedNames++;
+                }
+            }
+
+            if (data.publicEditSession != null) {
+                CustomNamePolicy.CleanupResult itemCleanup = CustomNamePolicy.sanitizeItems(data.publicEditSession.items);
+                changed |= itemCleanup.changed();
+                removedItems += itemCleanup.removedItems();
+                if (!CustomNamePolicy.isValidKitName(data.publicEditSession.name)) {
+                    data.publicEditSession.name = "Recovered Shared Kit";
+                    changed = true;
+                    renamedNames++;
+                }
+            }
+
+            if (removedItems > 0) data.pendingRemovedCustomNameItems += removedItems;
+            if (removedSupplies > 0) data.pendingRemovedInvalidSupplies += removedSupplies;
+            return new CleanupSummary(changed, removedItems, renamedNames, removedSupplies);
+        }
+    }
+
+    private String nextSafeKitName(String base, Collection<String> usedNames) {
+        String candidate = base;
+        int suffix = 2;
+        while (usedNames.contains(candidate) || !CustomNamePolicy.isValidKitName(candidate)) {
+            candidate = base + " " + suffix++;
+        }
+        return candidate;
+    }
+
+    private void logCustomNameCleanup(String scope, CleanupSummary cleanup) {
+        if (cleanup.removedItems() == 0 && cleanup.renamedNames() == 0) return;
+        plugin.logLocalized("custom_name_cleanup_log",
+                "scope", scope,
+                "removed", String.valueOf(cleanup.removedItems()),
+                "renamed", String.valueOf(cleanup.renamedNames()));
+    }
+
+    private void logSupplyCleanup(String scope, CleanupSummary cleanup) {
+        if (cleanup.removedSupplies() == 0) return;
+        plugin.logLocalized("supply_policy_cleanup_log",
+                "scope", scope,
+                "removed", String.valueOf(cleanup.removedSupplies()));
+    }
+
+    private record CleanupSummary(boolean changed, int removedItems, int renamedNames, int removedSupplies) {
+    }
+
     private boolean sameItems(ItemStack[] first, ItemStack[] second) {
         if (first == null || second == null || first.length != second.length) return false;
         for (int i = 0; i < first.length; i++) {
@@ -401,6 +552,8 @@ public class DataManager {
         public transient NamingContext namingContext = null;
         public transient long lastPickupWarningTime = 0;
         public transient long lastEnderChestPutTime = 0;
+        public transient int pendingRemovedCustomNameItems = 0;
+        public transient int pendingRemovedInvalidSupplies = 0;
         public transient long lastEnchantRejectTime = 0;
         public transient ItemStack[] lastLoadedKitSnapshot = null;
 

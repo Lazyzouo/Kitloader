@@ -16,12 +16,12 @@ function Read-JarEntry([string]$JarPath, [string]$EntryPath) {
     } finally { $archive.Dispose() }
 }
 
-$expected = @('en.us.jar', 'zh.cn.jar')
+$expected = @('Kitloader-en.us.jar', 'Kitloader-zh.cn.jar')
 foreach ($name in $expected) {
     $jar = Join-Path $Directory $name
     if (-not (Test-Path -LiteralPath $jar)) { throw "Missing release asset: $jar" }
     $config = Read-JarEntry $jar 'config.yml'
-    $expectedLanguage = if ($name -eq 'en.us.jar') { 'en_US' } else { 'zh_CN' }
+    $expectedLanguage = if ($name -eq 'Kitloader-en.us.jar') { 'en_US' } else { 'zh_CN' }
     if ($config -notmatch "(?m)^language:\s*$expectedLanguage\s*$") {
         throw "Unexpected language preset in $name"
     }
