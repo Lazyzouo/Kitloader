@@ -1,0 +1,19 @@
+name: Feature request / 功能建议
+description: Propose a focused, server-operator-relevant improvement / 提交面向服主的明确改进建议
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 问题
+      description: Explain the current operational problem. / 说明当前运维问题。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior / 建议行为
+      description: Include limits, permissions, and expected UI behavior. / 请说明限制、权限和预期 UI 行为。
+    validations:
+      required: true

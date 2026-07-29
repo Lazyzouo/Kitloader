@@ -1,0 +1,36 @@
+name: Bug report / 错误报告
+description: Report reproducible Kitloader behavior / 提交可复现的 Kitloader 问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use only an official package from https://github.com/Lazyzouo/Kitloader/releases.
+        请确认使用来自官方 Releases 的语言包。
+  - type: input
+    id: version
+    attributes:
+      label: Kitloader version / Kitloader 版本
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server and Java / 服务端与 Java
+      placeholder: "Paper 1.21.11, Java 21"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction / 复现步骤
+      placeholder: "1. ...\n2. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log / 相关日志
+      description: Remove IPs, UUIDs, and secrets first. / 请先移除 IP、UUID 和私密信息。

@@ -1,0 +1,32 @@
+name: Build / 构建
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Paper/Folia 1.21.11 build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Build official language packages
+        run: ./gradlew clean build --no-daemon --console=plain
+      - name: Verify release package layout
+        shell: bash
+        run: |
+          test -f build/libs/en.us.jar
+          test -f build/libs/zh.cn.jar
+          test "$(find build/libs -maxdepth 1 -type f -name '*.jar' | wc -l | tr -d ' ')" = "2"

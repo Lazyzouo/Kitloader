@@ -1,0 +1,314 @@
+# ============================================================================ #
+#                                                                              #
+#                                Kitloader v${version}                         #
+#                                                                              #
+#    作者: ${author}                                                           #
+#    描述: 专为 Folia/Paper 设计的高性能Kitloader管理系统                      #
+#    提示: 修改本文件后，可在游戏内使用 /kitloader reload 指令热重载所有配置。       #
+#                                                                              #
+# ============================================================================ #
+
+# 发行包默认语言：zh_CN 或 en_US
+language: en_US
+
+# GitHub 官方 Release 自动更新
+updates:
+  enabled: true
+  auto-download: true
+
+settings:
+  # 玩家退出游戏时是否重置状态/数据 用于防止玩家上而已重连ReKit 设为False则不重置
+  reset-on-quit: false
+  # 玩家能够保存的最大个人 Kit 数量上限
+  max-kits: 9
+
+  custom-supply:
+    # 是否启用自定义上传补给功能
+    enabled: true
+    # 自定义补给分类的上传最大数量限制
+    max-limit: 3
+    # 默认新创建的自定义补给盒名称
+    default-box-name: "&#34495E&l潜影盒"
+
+  public-kits:
+    # 是否允许玩家上传共享 Kit（不影响查看和管理已上传的 Kit）
+    upload-enabled: true
+    # 每名玩家最多可上传的共享 Kit 数量
+    max-limit: 2
+
+  # 默认的 KitLoader 分类名称
+  default-category: "supply"
+  # 管理员指令及操作的权限节点
+  admin-permission: "kitloader.admin"
+
+  # 单次使用的特殊世界列表（在这些世界中 Kit 的使用会受到次数限制）
+  single-use-worlds: []
+
+  # 共用白名单：绕过区域限制，同时授权使用 /regear；/inv 还要求执行者为 OP
+  # 支持玩家名或 UUID，不区分大小写
+  bypass-whitelist: []
+
+  autosave:
+    # 是否启用背包自动保存/备份功能
+    enabled: true
+    # 触发自动保存所需的最低背包填满格子数
+    required-filled-slots: 36
+
+  shulker-limits:
+    # 是否启用潜影盒数量限制功能
+    enabled: true
+    # 单个 Kit 保存时允许的最大潜影盒数量；/kitloader invmax 会与 inventory-max 同步修改
+    kit-save-max: 3
+    # 玩家背包中允许存在的最大潜影盒数量（默认环境）；可使用 /kitloader invmax <1-36> 修改
+    inventory-max: 3
+    # 在这些世界中，玩家背包潜影盒上限将自动与 enderchest-max 保持一致！
+    special-limit-worlds: []
+    # 末影箱中允许存在的最大潜影盒数量
+    # 提示：该数值同时决定专属末影箱 UI，以及“已上传的补给”页面末影箱区域的开放格数
+    # 已上传补给页会按 1-9 / 10-18 / 19-27 自动显示 9 / 18 / 27 格末影箱区域
+    # 如果这个值大于 9，将会自动切换为大屏(最大54格)末影箱UI模式
+    enderchest-max: 9
+    # 拾取超限时的提示消息防刷屏冷却时间（毫秒）
+    warning-cooldown: 3000
+
+  gui-animation:
+    # GUI界面（如分类箱的彩色滚动标题、动态潜影盒变色）的刷新间隔（毫秒）
+    # 默认 100 毫秒，数值越低动画越丝滑，但会轻微增加服务器发包负担
+    update-interval: 100
+
+  naming:
+    # 控制玩家取消重命名操作的指令（防止与其他插件冲突时可修改）
+    cancel-command: "/kitloader cancelname"
+
+  enchantments:
+    # 附魔不支持或发生冲突时，消息与拒绝音效的防刷屏冷却（毫秒）
+    rejection-cooldown-ms: 1500
+
+gui:
+  # ---- 界面全局标题配置 ----
+  # 高级深色极光蓝渐变 + 粗体（分类箱界面标题前缀）
+  category-prefix: "&#0F2027&l分&#1A2A32&l类&#203A43&l箱 &8&l» &f&l"
+  # 熔岩烈焰红渐变 + 粗体（保存并关闭按钮前缀）
+  edit-prefix: "&#CB2D3E&l保&#CF3341&l存&#D33943&l并&#D73F46&l关&#DB4548&l闭 &8&l» &f&l"
+  # 深紫罗兰贵族渐变 + 粗体（个人 Kit 列表界面标题）
+  kit-list-title: "&#8A2387&l个&#962B85&l人&#A23282&lK&#AE3A80&li&#BA417D&lt&#C6497B&l列&#D25078&l表"
+  # 鲜血红流光渐变 + 粗体（编辑 Kit 界面前缀）
+  kit-edit-prefix: "&#D31027&l编&#DD1827&l辑&#E62028&lK&#F02828&li&#FF372A&lt &8&l» &f&l"
+
+  # ---- 独立功能UI标题配置 ----
+  titles:
+     custom-supply: "&#FF0099&l自&#FF1188&l定&#FF2277&l义&#FF3366&l补&#FF4455&l给&#FF5544&l盒"
+     enchant-edit: "&#8E2DE2&l附&#8020DF&l魔&#7213DC&l与&#6406D9&l物&#5600D6&l品&#4A00E0&l编&#3D00EB&l辑"
+     armor-trim: "&#000046&l盔&#071D43&l甲&#0F3941&l纹&#16563E&l饰&#1D733B&l与&#248F39&l名&#2CB036&l称"
+     uploaded-supplies: "&#F12711&l已&#F34217&l上&#F45E1E&l传&#F67924&l的&#F8952B&l补&#F9B031&l给"
+     dedicated-enderchest: "&#D32F2F&l专&#D73F46&l属&#DB4548&l末&#DF4C4A&l影&#E3524C&l箱"
+    # {page} 变量代表页码
+     supply-enderchest-mode: "&#D32F2F&l末&#D73F46&l影&#DB4548&l箱&#DF4C4A&l直&#E3524C&l存&#E7594F&l模&#EB5F51&l式 &8&l- P{page}"
+    # {player} 代表玩家名, {kit} 代表套装名
+     admin-other-kit: "&#FF0099&l管&#FF0E9B&l理&#FF1C9D&l他&#FF2A9F&l人&#FF38A1&lK&#FF46A3&li&#FF54A5&lt&#FF62A7&l: &f&l{player} &#808080&l- &e&l{kit}"
+
+  # ---- 界面按键与Lore配置 ----
+  # GUI 界面翻页：上一页按钮显示文本
+  btn-prev-page: "&#00B09B&l⬅ 上一页"
+  # GUI 界面翻页：下一页按钮显示文本
+  btn-next-page: "&#00B09B&l下一页 ➡"
+  # GUI 界面当前分类显示格式
+  btn-category-name: "&#F2C94C&l[*] 分类: &f&l{category}"
+
+  # 删除确认按钮显示文本
+  btn-confirm-delete: "&#00B09B&l[✔] 确认删除"
+  # 删除确认按钮的 Lore 提示说明
+  btn-confirm-lore: "&#95A5A6&l点击永久删除该Kit，不可恢复！"
+  # 取消删除操作按钮显示文本
+  btn-cancel-delete: "&#FF5E62&l[✖] 取消操作"
+  # 取消操作按钮的 Lore 提示说明
+  btn-cancel-lore: "&#95A5A6&l点击返回Kit列表。"
+
+  # 功能按键名称配置
+  buttons:
+    custom-supply: "&#F2C94C&l[+] 自定义上传补给"
+    uploaded-supplies: "&#F2C94C&l[=] 查看已上传补给"
+    enderchest-mode: "&#D32F2F&l[>] 快捷末影箱 (直存模式)"
+    # 使用 | 符号可配置多行 Lore
+  enderchest-mode-lore: |
+    &#95A5A6&l点击切换为末影箱直存模式
+    &#95A5A6&l配置超9格时自动转移全新大UI
+    &#95A5A6&l方便将补给盒直接存入其中
+
+  # 正常状态下 Kit 物品的 Lore 提示信息
+  kit-item-lore:
+    - "&7"
+    - "&#00B09B&l[左键] &f&l加载该Kit"
+    - "&#FF5E62&l[右键] &f&l编辑 / 删除"
+
+  # 受限制世界中 Kit 物品的 Lore 提示信息
+  kit-item-lore-restricted:
+    - "&7"
+    - "&#00B09B&l[左键] &f&l仅限加载该Kit"
+    - "&#F2C94C&l[右键] &f&l查看Kit内容 (当前世界只读)"
+
+messages:
+  # 插件所有消息的统一前缀
+  prefix: "&#00D2FF&l[&#3A7BD5&lKitloader&#00D2FF&l] &8&l» &7&l"
+
+  # ---- 基础系统提示 ----
+  plugin_enabled: "{prefix}&a&lKitloader v{version} by {author} 已在 Folia 核心上成功启动！"
+  update_checking: "Checking the official Kitloader GitHub Release for updates."
+  update_latest: "Kitloader {version} is already the latest version."
+  update_available: "Kitloader {latest} is available; the current version is {current}."
+  update_downloaded: "Kitloader {version} was downloaded and passed SHA-256 verification. It will install on the next server restart."
+  update_manual: "Kitloader {version} is available. Download it from the official Releases page: {url}"
+  update_failed: "Kitloader automatic update failed: {reason}. Download it manually from: {url}"
+  reload_success: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l配置文件与数据已成功重载！"
+  no_permission: "{prefix}&c&l权限不足 &#34495E&l► &#95A5A6&l你没有权限执行此命令！"
+  player_only: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l只有在游戏内的玩家才能执行此操作！"
+  data_loading: "{prefix}&e&l系统提示 &#34495E&l► &#95A5A6&l数据尚未加载完成，请稍后再试！"
+  supply_upload_disabled: "{prefix}&c&l功能关闭 &#34495E&l► &#95A5A6&l管理员当前禁止玩家上传补给！"
+  public_kit_upload_disabled: "{prefix}&c&l功能关闭 &#34495E&l► &#95A5A6&l管理员当前禁止玩家上传共享 Kit！"
+  public_kit_upload_limit: "{prefix}&c&l数量已满 &#34495E&l► &#95A5A6&l你最多只能上传 &#FF5E62&l{limit} &#95A5A6&l个共享 Kit！"
+  public_kit_inventory_not_full: "{prefix}&c&l背包未满 &#34495E&l► &#95A5A6&l上传 Kit 前必须填满背包的 36 个储物格；盔甲与副手不作要求。"
+  public_kit_duplicate: "{prefix}&c&l上传失败 &#34495E&l► &#95A5A6&l已存在物品内容相同的共享 Kit，修改 Kit 名称或物品显示名也不能重复上传。"
+
+  # ---- 机制与区域限制 ----
+  single_use_limit: "{prefix}&c&l区域限制 &#34495E&l► &#95A5A6&l当前世界仅限加载一次 Kit，您已使用过一次，请死亡复活后再试！"
+  restricted_action: "{prefix}&c&l区域限制 &#34495E&l► &#95A5A6&l当前世界不可执行此操作(保存/删除/编辑/领取)，请返回主城！"
+  restricted_command: "{prefix}&c&l区域封锁 &#34495E&l► &#95A5A6&l当前世界禁止使用该 Kitloader 指令，仅开放 /kit、/kit list 与 /kit help。"
+  kit_shulker_trimmed: "{prefix}&e&lKit 潜影盒限制 &#34495E&l► &#95A5A6&l保存上限为 {max} 个，已从保存副本中剔除 {removed} 个超额潜影盒。"
+  kit_limit_reached: "{prefix}&c&l数量已满 &#34495E&l► &#95A5A6&l最多只能保存 {max} 个个人 Kit。现有 Kit：{kits}"
+
+  # ---- 个人 Kit 操作 ----
+  no_kits: "{prefix}&e&l系统提示 &#34495E&l► &#95A5A6&l你还没有保存任何个人Kit！输入 &#F2C94C&l/kit save <名称> &#95A5A6&l保存。"
+  kit_not_found: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l找不到名为 '&#FF5E62&l{kit}&#95A5A6&l' 的Kit！"
+  kit_saved: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l成功将当前背包保存为Kit: &#F2C94C&l{kit}"
+  kit_deleted: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l成功删除Kit: &#F2C94C&l{kit}"
+  kit_loaded: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l成功加载Kit &#F2C94C&l{kit}&#95A5A6&l，原背包物品已清空！"
+
+  # ---- 自动保存与 GUI 保存 ----
+  autosave_success: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l您的背包物品已满足条件，并已自动备份为Kit: &#F2C94C&lautosave"
+  autosave_skipped: "{prefix}&e&l系统提示 &#34495E&l► &#95A5A6&l您的背包内物品不足 &#FF5E62&l{required} &#95A5A6&l格，本次已取消自动保存！"
+  gui_saved: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l分类 &#F2C94C&l{category} &#95A5A6&l(第{page}页) 的物品已更新保存！"
+  category_not_found: "{prefix}&c&l找不到分类 '{category}'，请先检查名称！"
+  edit_category: "{prefix}&a&l正在编辑分类: &#F2C94C&l{category} &a&l(第{page}页)&a&l，关闭界面即可保存。"
+  no_categories: "{prefix}&c&l管理员未创建任何分类！"
+
+  # ---- 白名单系统 ----
+  whitelist_add: "{prefix}&a&l特权更新 &#34495E&l► &#95A5A6&l已将玩家 &#F2C94C&l{player} &#95A5A6&l加入免限制白名单！"
+  whitelist_remove: "{prefix}&a&l特权更新 &#34495E&l► &#95A5A6&l已将玩家 &#F2C94C&l{player} &#95A5A6&l移出免限制白名单！"
+  whitelist_list: "{prefix}&a&l白名单列表 &#34495E&l► &f&l{players}"
+
+  # ---- 拦截与警告 ----
+  category_empty_nosave: "{prefix}&c&l保存拦截 &#34495E&l► &#95A5A6&l你尝试保存一个没有任何物品的空分类，系统已拦截此操作以防止误清空！"
+  kit_save_empty: "{prefix}&c&l保存拦截 &#34495E&l► &#95A5A6&l你的背包是空的，系统已拦截本次保存以防止覆盖旧数据！"
+  shulker_limit_kitsave: "{prefix}&c&l保存失败 &#34495E&l► &#95A5A6&l当前背包中带有Kitloader标识的潜影盒超过了上限 (&#FF5E62&l{max}个&#95A5A6&l)！"
+  shulker_limit_kitedit: "{prefix}&c&l保存失败 &#34495E&l► &#95A5A6&l你编辑的Kit中，标识潜影盒的数量超过了上限 (&#FF5E62&l{max}个&#95A5A6&l)，本次修改未保存！"
+  shulker_limit_inventory: "{prefix}&c&l违禁清理 &#34495E&l► &#95A5A6&l检测到背包中获取的潜影盒超过了全局限制 (&#FF5E62&l{max}个&#95A5A6&l),已自动销毁超出的部分！"
+  shulker_limit_enderchest: "{prefix}&c&l违禁清理 &#34495E&l► &#95A5A6&l末影箱中的潜影盒数量已超过限制 (&#FF5E62&l{max}个&#95A5A6&l),多余部分已被自动拦截！"
+
+  # ================= 以下为从源码中提取出的全套硬编码消息 =================
+
+  # ---- 重命名与指令相关 ----
+  naming_instructions:
+    - ""
+    - "&#F2C94C&l► &#00B09B&l请在聊天栏直接输入新名称！"
+    - "&#F2C94C&l► &#95A5A6&l可用颜色代码: &f&l&+a, &+b, &+c, &+1, &+2... 或十六进制 &#RRGGBB"
+    - "&#F2C94C&l► &#95A5A6&l可用格式代码: &f&l(&+l粗体), &o(&+o斜体), &n(&+n下划线)"
+    - "&#F2C94C&l► &#F2C94C&l若想取消命名并恢复界面，请输入: &#00D2FF&l{cancel_cmd}"
+    - ""
+  naming_cancelled: "{prefix}&c&l已取消自定义名称，并为您恢复界面。"
+  naming_forbidden_command: "{prefix}&c&l正在重命名期间，禁止使用其他指令！请输入 &#00D2FF&l{cancel_cmd} &c&l取消，或在聊天栏直接输入新名称。"
+  name_set_supply: "{prefix}&a&l补给盒名称已成功设为: &f&l{name}"
+  name_set_kit_exist: "{prefix}&c&l已存在同名Kit，请换一个名称！"
+  name_set_kit_success: "{prefix}&a&lKit已成功重命名为: &f&l{name}"
+  name_set_item: "{prefix}&a&l物品名称已成功设为: &f&l{name}"
+
+  # ---- 附魔与纹饰校验相关 ----
+  enchant_unsupported: "{prefix}&c&l不符合原版机制，该物品无法应用 [{enchant}] 附魔！"
+  enchant_conflict: "{prefix}&c&l该附魔与已存在的 [{enchant}] 冲突！"
+  trim_removed: "{prefix}&a&l已成功移除盔甲纹饰！"
+  armor_slot_mismatch: "{prefix}&c&l只能在这个槽位放置对应部位的盔甲装备！"
+
+  # ---- 补给盒编辑与上传相关 ----
+  shulker_nesting_forbidden: "{prefix}&c&l禁止盒中盒！不能在补给盒中放入潜影盒。"
+  supply_temporarily_saved: "{prefix}&a&l补给盒内容已成功暂存！可随时回来重新编辑。"
+  supply_auto_saved_close: "{prefix}&a&l由于界面意外关闭，您的补给盒编辑内容已为您自动暂存！"
+  edit_temporarily_saved_on_death: "{prefix}&e&l检测到您已死亡，正在编辑的内容已自动暂存。"
+  supply_empty_upload: "{prefix}&c&l无法上传！你的补给盒内没有任何物品。"
+  supply_upload_limit: "{prefix}&c&l已达到最大上传限制({limit}个)，请先删除部分补给！"
+  supply_upload_success: "{prefix}&a&l补给盒上传成功！已实时同步至补给分类页。"
+  supply_upload_duplicate: "{prefix}&c&l上传失败 &#34495E&l► &#95A5A6&l已存在内容相同的上传补给，修改补给名称或颜色也不能重复上传。"
+  supply_delete_success: "{prefix}&a&l成功删除了补给: &f&l{box}"
+  supply_visibility_public: "{prefix}&a&l公开状态已更新 &#34495E&l► &#95A5A6&l其他玩家现在可以看见你上传的补给。"
+  supply_visibility_hidden: "{prefix}&e&l隐藏状态已更新 &#34495E&l► &#95A5A6&l已从所有玩家的公共补给页移除，仅可在已上传补给管理页查看和使用。"
+
+  # ---- 在线玩家背包管理 ----
+  inv_not_whitelisted: "{prefix}&c&l访问被拒绝 &#34495E&l► &#95A5A6&l你不在 bypass-whitelist 共用白名单中。"
+  whitelist_command_denied: "{prefix}&c&l访问被拒绝 &#34495E&l► &#95A5A6&l该指令仅限 bypass-whitelist 白名单成员使用。"
+  inv_usage: "{prefix}&e&l指令用法 &#34495E&l► &#95A5A6&l/inv [在线玩家名或UUID]"
+  inv_target_not_found: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l在线玩家 {player} 不存在。"
+  inv_target_busy: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l玩家 {player} 正由其他管理员编辑。"
+  inv_cannot_edit_self: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l不能通过 /inv 编辑自己的背包。"
+  inv_session_active: "{prefix}&e&l系统提示 &#34495E&l► &#95A5A6&l请先结束当前 /inv 编辑会话。"
+  inv_saved: "{prefix}&a&l保存成功 &#34495E&l► &#95A5A6&l已提交玩家 {player} 的背包与末影箱修改。"
+  inv_discarded: "{prefix}&e&l已放弃修改 &#34495E&l► &#95A5A6&l玩家 {player} 与你的物品均已恢复。"
+  inv_target_offline: "{prefix}&e&l编辑已取消 &#34495E&l► &#95A5A6&l玩家 {player} 已离线，物品已恢复。"
+
+  # ---- 末影箱与背包满载相关 ----
+  inventory_full: "{prefix}&c&l您的背包空间不足！"
+  enderchest_full_dedicated: "{prefix}&c&l当前解锁的末影箱空间已满！"
+  enderchest_full_small: "{prefix}&c&l末影箱前 9 格已满，请先清理后再试！"
+
+  # ---- 管理员快捷指令相关 ----
+  ecmax_invalid_range: "{prefix}&c&l数量设置失败！有效范围必须在 1 到 27 之间。"
+  invalid_number: "{prefix}&c&l请输入有效的数字！"
+  ecmax_set_success: "{prefix}&a&l成功将末影箱限制和动态UI格数修改为: &f&l{slots}"
+  invmax_usage: "{prefix}&e&l指令用法 &#34495E&l► &#95A5A6&l/kitloader invmax <1-36>"
+  invmax_invalid_range: "{prefix}&c&l数量设置失败 &#34495E&l► &#95A5A6&l有效范围必须为 1 到 36。"
+  invmax_set_success: "{prefix}&a&l设置成功 &#34495E&l► &#95A5A6&l玩家携带与个人 Kit 保存的潜影盒上限已同时调整为 {max}。"
+
+  # ---- Regear 离线/在线玩家补给管理 ----
+  regear_usage: "{prefix}&e&l指令用法 &#34495E&l► &#95A5A6&l/regear <玩家名或UUID> list"
+  regear_target_not_found: "{prefix}&c&l目标不存在 &#34495E&l► &#95A5A6&l找不到曾加入服务器的玩家 {player}。"
+  regear_target_loading: "{prefix}&e&l数据加载中 &#34495E&l► &#95A5A6&l在线玩家 {player} 的数据尚未完成加载，请稍后重试。"
+  regear_target_busy: "{prefix}&e&l目标正忙 &#34495E&l► &#95A5A6&l玩家 {player} 的补给正由另一名白名单管理员编辑。"
+  regear_supply_missing: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l该补给已被删除或唯一 ID 已失效，页面已刷新。"
+  regear_invalid_supply: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l目标记录不是有效的潜影盒，无法编辑。"
+  regear_cursor_not_empty: "{prefix}&e&l请先放下光标上的物品，再使用编辑控制按钮。"
+  regear_name_prompt: "{prefix}&e&l请输入新的补给名称 &#34495E&l► &#95A5A6&l支持颜色代码，最多 50 个可见字符。"
+  regear_name_invalid: "{prefix}&c&l名称无效 &#34495E&l► &#95A5A6&l名称不能为空且最多 50 个可见字符，请重新输入。"
+  regear_name_updated: "{prefix}&a&l名称已更新到编辑预览，点击保存后才会写入目标数据。"
+  regear_save_success: "{prefix}&a&l保存成功 &#34495E&l► &#95A5A6&l已同步更新玩家 {player} 的补给及公共记录。"
+  regear_delete_success: "{prefix}&a&l删除成功 &#34495E&l► &#95A5A6&l已删除玩家 {player} 的补给 {box}。"
+
+  # ======================================================================
+
+  # 管理员帮助菜单文本列表
+  admin_help_menu:
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"
+    - "&#00D2FF&l  [K] Kitloader &7&lv{version} &8&l| &7&l作者&f&l{author} &8&l(管理员模式)"
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"
+    - "&#F2C94C&l▶ 玩家指令 ◀"
+    - "  &#95A5A6&l/kitloader &#34495E&l- &f&l打开KitloaderGUI"
+    - "  &#95A5A6&l/kit list &#34495E&l- &f&l个人已保存的Kit列表"
+    - ""
+    - "&#FF5E62&l▶ 管理员指令 ◀"
+    - "  &#95A5A6&l/kitloader edit <分类> &#34495E&l- &f&l进入界面编辑分类"
+    - "  &#95A5A6&l/kitloader whitelist <add|remove|list> &#34495E&l- &f&l白名单管理"
+    - "  &#95A5A6&l/kit <玩家> list &#34495E&l- &f&l管理/提取他人Kit"
+    - "  &#95A5A6&l/kitloader reload &#34495E&l- &f&l重载配置"
+    - "  &#95A5A6&l/kitloader ecmax <数量> &#34495E&l- &f&l设置末影箱限制"
+    - "  &#95A5A6&l/inv [在线玩家名或UUID] &#34495E&l- &f&l实时管理背包、装备与末影箱"
+    - "  &#95A5A6&l/regear <玩家> list &#34495E&l- &f&l管理在线或离线玩家上传的补给"
+    - "  &#95A5A6&l/kitloader invmax <1-36> &#34495E&l- &f&l同步设置携带与Kit保存潜影盒上限"
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"
+
+  # 普通玩家帮助菜单文本列表
+  player_help_menu:
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"
+    - "&#00D2FF&l ❖ &3&lKitloader &7&lv{version} &8&l| &7&l作者&f&l{author}"
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"
+    - "&#F2C94C&l ► &#F2C94C&l基础指令 &#F2C94C&l◄"
+    - "  &f&l/kit list &#34495E&l- &#95A5A6&l打开可视化的Kit列表"
+    - "  &f&l/kit <套装名> &#34495E&l- &#95A5A6&l快捷加载指定Kit"
+    - "  &f&l/kit save <套装名> &#34495E&l- &#95A5A6&l保存当前背包为Kit"
+    - "  &f&l/kit delete <套装名> &#34495E&l- &#95A5A6&l删除指定的Kit"
+    - "&#34495E&l&m---------&#95A5A6&l&m---------&f&#F2C94C&l ✧ &#95A5A6&l&m---------&#34495E&l&m---------"

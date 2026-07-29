@@ -1,0 +1,17 @@
+name: ${project_name}
+version: '${version}'
+main: ${group}.kitloader.Kitloader
+api-version: '1.21'
+author: ${author}
+folia-supported: true
+commands:
+  kit:
+    description: Kit commands / 套装主指令
+  kitloader:
+    description: Open Kitloader GUI / 打开物资领取 GUI
+  inv:
+    description: Live inventory editor / 实时背包编辑
+    usage: /inv [player name or UUID / 玩家名或 UUID]
+  regear:
+    description: Manage uploaded supplies / 管理上传补给
+    usage: /regear <player name or UUID / 玩家名或 UUID> list

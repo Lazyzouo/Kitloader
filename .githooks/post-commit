@@ -1,0 +1,5 @@
+#!/bin/sh
+# Push successful local commits after an origin remote has been configured.
+if git remote get-url origin >/dev/null 2>&1; then
+  git push origin HEAD:main || printf '%s\n' 'Kitloader: automatic push failed; retry with git push origin main.' >&2
+fi

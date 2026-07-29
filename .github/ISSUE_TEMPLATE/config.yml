@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Official releases / 官方发布
+    url: https://github.com/Lazyzouo/Kitloader/releases
+    about: Download en.us.jar or zh.cn.jar only. / 只下载 en.us.jar 或 zh.cn.jar。
+  - name: Security policy / 安全政策
+    url: https://github.com/Lazyzouo/Kitloader/security/policy
+    about: Report vulnerabilities privately. / 请私密报告安全漏洞。

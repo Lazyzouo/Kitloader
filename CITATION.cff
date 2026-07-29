@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use Kitloader in research or documentation, please cite this project."
+title: "Kitloader"
+version: "2.0.0"
+date-released: 2026-07-29
+authors:
+  - family-names: "Lazyz"
+repository-code: "https://github.com/Lazyzouo/Kitloader"
+url: "https://github.com/Lazyzouo/Kitloader"
+license: "MIT"
