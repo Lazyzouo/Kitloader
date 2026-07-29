@@ -268,7 +268,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player admin)) return;
         InventoryHolder holder = event.getView().getTopInventory().getHolder();
@@ -295,7 +295,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
 
     private void handleListClick(Player admin, InventoryClickEvent event, SupplyListHolder holder) {
         event.setCancelled(true);
-        if (!InventoryClickResolver.isTopClick(event)) return;
+        if (event.getClickedInventory() != event.getView().getTopInventory()) return;
         int slot = event.getRawSlot();
         if (!event.getClick().isLeftClick() && slot >= PAGE_SIZE) return;
         if (slot == PREVIOUS_SLOT) {
@@ -324,14 +324,13 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         }
 
         int rawSlot = event.getRawSlot();
-        if (InventoryClickResolver.isTopClick(event)) {
+        int topSize = event.getView().getTopInventory().getSize();
+        if (event.getClickedInventory() == event.getView().getTopInventory()) {
             if (rawSlot >= 0 && rawSlot <= 26) {
                 if (wouldInsertShulker(admin, event)) {
                     event.setCancelled(true);
                     plugin.sendMsg(admin, "shulker_nesting_forbidden");
-                    return;
                 }
-                event.setCancelled(false);
                 return;
             }
 
@@ -370,13 +369,13 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             return;
         }
 
-        if (!InventoryClickResolver.isBottomClick(event)) {
+        if (rawSlot < topSize || event.getClickedInventory() == null) {
             event.setCancelled(true);
             return;
         }
         if (event.isShiftClick()) {
             event.setCancelled(true);
-            ItemStack clicked = InventoryClickResolver.clickedItem(event);
+            ItemStack clicked = event.getCurrentItem();
             if (clicked == null || clicked.getType().isAir()) return;
             if (isShulker(clicked)) {
                 plugin.sendMsg(admin, "shulker_nesting_forbidden");
@@ -384,7 +383,6 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             }
             moveIntoEditor(event, event.getView().getTopInventory());
         }
-        if (!event.isShiftClick()) event.setCancelled(false);
     }
 
     private boolean wouldInsertShulker(Player admin, InventoryClickEvent event) {
@@ -398,7 +396,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
     }
 
     private void moveIntoEditor(InventoryClickEvent event, Inventory topInventory) {
-        ItemStack clicked = InventoryClickResolver.clickedItem(event);
+        ItemStack clicked = event.getCurrentItem();
         int remaining = clicked.getAmount();
         for (int pass = 0; pass < 2 && remaining > 0; pass++) {
             for (int slot = 0; slot < 27 && remaining > 0; slot++) {
@@ -419,18 +417,13 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                 }
             }
         }
-        if (remaining <= 0) {
-            event.setCurrentItem(null);
-        } else {
-            ItemStack remainingItem = clicked.clone();
-            remainingItem.setAmount(remaining);
-            event.setCurrentItem(remainingItem);
-        }
+        if (remaining <= 0) event.setCurrentItem(null);
+        else event.getCurrentItem().setAmount(remaining);
     }
 
     private void handleDeleteClick(Player admin, InventoryClickEvent event, ConfirmDeleteHolder holder) {
         event.setCancelled(true);
-        if (!InventoryClickResolver.isTopClick(event)) return;
+        if (event.getClickedInventory() != event.getView().getTopInventory()) return;
         if (!event.getClick().isLeftClick()) return;
         if (event.getRawSlot() == 15) {
             openList(admin, holder.returnPage);
@@ -502,7 +495,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         openList(admin, returnPage);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    @EventHandler
     public void onInventoryDrag(InventoryDragEvent event) {
         if (!(event.getWhoClicked() instanceof Player admin)) return;
         InventoryHolder holder = event.getView().getTopInventory().getHolder();
@@ -521,7 +514,6 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                 return;
             }
         }
-        event.setCancelled(false);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)

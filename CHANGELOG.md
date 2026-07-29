@@ -4,6 +4,30 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.8] - 2026-07-30
+
+### Changed
+
+- Restored the exact Kitloader 1.4.1 native inventory event model across the main GUI, `/inv`, and `/regear`: default Bukkit event priority, native `getClickedInventory()`, and native `getCurrentItem()` handling.
+- Removed the 2.0.7 raw-slot click resolver and forced event-cancellation overrides while preserving protected controls, editor limits, and the one-tick duplicate-claim lock.
+
+### Fixed
+
+- GUI controls and editable inventory actions no longer depend on the 2.0.7 event wrapper that could leave clicks visually acknowledged but unexecuted while the player was moving or jumping.
+- Official package names include the plugin name, version, and language: `Kitloader-2.0.8-en.us.jar` and `Kitloader-2.0.8-zh.cn.jar`.
+
+## [2.0.8] - 2026-07-30（中文）
+
+### 变更
+
+- 主界面、`/inv` 与 `/regear` 完整恢复 Kitloader 1.4.1 的原生库存事件模型：使用 Bukkit 默认事件优先级、原生 `getClickedInventory()` 与原生 `getCurrentItem()`。
+- 移除 2.0.7 的原始槽位点击解析器和强制事件取消覆盖，同时保留受保护控件、编辑限制及一刻防重复领取锁。
+
+### 修复
+
+- GUI 控件与可编辑库存操作不再依赖 2.0.7 的事件包装层，修复玩家移动或跳跃时客户端显示已点击、对应操作却没有执行的问题。
+- 官方包名包含插件名、版本号与语言：`Kitloader-2.0.8-en.us.jar`、`Kitloader-2.0.8-zh.cn.jar`。
+
 ## [2.0.7] - 2026-07-29
 
 ### Changed
