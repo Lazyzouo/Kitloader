@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.5
+**Version:** 2.0.6
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,8 +14,8 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-2.0.5-en.us.jar` | `en_US` | English servers |
-| `Kitloader-2.0.5-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.6-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.6-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
 
@@ -94,7 +94,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ### Item editor
 
-- Left click and Shift click claim/transfer supported items; right click opens the relevant editor when appropriate. Every GUI resolves clicks from the server raw slot and inventory snapshot, while claims are applied on the next player tick, so movement and jumping cannot invalidate item, refresh, category, or page interactions.
+- GUI controls use the proven 1.4.1 native inventory-click path, so item claims, refresh controls, category switches, and page arrows remain interactive while the player moves or jumps. Left click lets Minecraft complete its own slot transaction and restores the display template on the next player tick; Shift click, number-key, and offhand claims complete inside the event. A one-tick per-player lock prevents repeated same-tick grants.
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.
 - The disposal area intentionally produces no destruction sound and no "silent" wording.
@@ -118,7 +118,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.5
+**版本：**2.0.6
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -130,8 +130,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-2.0.5-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-2.0.5-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.6-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.6-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
 
@@ -210,7 +210,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 ### 物品编辑
 
-- 左键与 Shift 点击用于领取/转移支持的物品；适当情况下右键打开编辑界面。所有 GUI 根据服务端原始槽位和库存快照解析点击，领取在下一玩家刻写入，因此移动或跳跃不会使领取、刷新、分类切换或翻页交互失效。
+- GUI 控件恢复使用经 1.4.1 验证的原生库存点击路径，因此玩家移动或跳跃时仍可领取物品、刷新、切换分类和翻页。左键领取由 Minecraft 自身完成槽位事务，并在下一玩家刻恢复展示模板；Shift 点击、数字键及副手领取在事件内即时完成。每名玩家一刻领取锁可防止同一刻重复发放。
 - 盔甲纹饰和原材料染色从可用项中随机选择，不再固定使用第一个。
 - 不兼容附魔会在冷却内拒绝，防止提示和拒绝音效刷屏。
 - 销毁区不播放销毁音效，也不显示“无声”字样。

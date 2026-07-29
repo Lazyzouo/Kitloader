@@ -28,6 +28,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,31 +54,6 @@ public class KitListener implements Listener {
         cleaned = cleaned.replaceAll("(?i)[&§][0-9a-fk-or]", "");
         return Kitloader.canonicalize(cleaned.trim());
     }
-    private boolean isTopInventoryClick(InventoryClickEvent event) {
-        int rawSlot = event.getRawSlot();
-        return rawSlot >= 0 && rawSlot < event.getView().getTopInventory().getSize();
-    }
-
-    private boolean isBottomInventoryClick(InventoryClickEvent event) {
-        int rawSlot = event.getRawSlot();
-        int topSize = event.getView().getTopInventory().getSize();
-        if (rawSlot < topSize) return false;
-        int convertedSlot = event.getView().convertSlot(rawSlot);
-        return convertedSlot >= 0 && convertedSlot < event.getView().getBottomInventory().getSize();
-    }
-
-    private ItemStack resolveClickedItem(InventoryClickEvent event) {
-        int rawSlot = event.getRawSlot();
-        if (isTopInventoryClick(event)) {
-            return event.getView().getTopInventory().getItem(rawSlot);
-        }
-        if (isBottomInventoryClick(event)) {
-            int convertedSlot = event.getView().convertSlot(rawSlot);
-            return event.getView().getBottomInventory().getItem(convertedSlot);
-        }
-        return event.getCurrentItem();
-    }
-
 
     private boolean isRestrictedKitloaderGui(String cleanTitle) {
         String categoryPrefix = cleanText(plugin.getGuiTitle("category-prefix", ""));
@@ -95,31 +71,6 @@ public class KitListener implements Listener {
                 || cleanTitle.contains("在线玩家背包管理")
                 || cleanTitle.contains("背包与装备")
                 || cleanTitle.contains("末影箱编辑");
-    }
-
-    private boolean isKitloaderGui(String cleanTitle) {
-        if (isRestrictedKitloaderGui(cleanTitle)) return true;
-        String kitEditPrefix = cleanText(plugin.getGuiTitle("kit-edit-prefix", ""));
-        if (!kitEditPrefix.isEmpty() && cleanTitle.startsWith(kitEditPrefix)) return true;
-        return cleanTitle.equals(cleanText(GuiManager.T_SAVE_PLAYER))
-                || cleanTitle.equals(cleanText(GuiManager.T_DEL_PLAYER))
-                || cleanTitle.equals(cleanText(GuiManager.T_SAVE_ADMIN))
-                || cleanTitle.equals(cleanText(GuiManager.T_DEL_ADMIN))
-                || cleanTitle.equals(cleanText(GuiManager.T_SAVE_PUB))
-                || cleanTitle.equals(cleanText(GuiManager.T_DEL_PUB))
-                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_PUB))
-                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_PLAYER))
-                || cleanTitle.equals(cleanText(GuiManager.T_ABANDON_ADMIN))
-                || cleanTitle.equals(cleanText(GuiManager.T_CANCEL_UP))
-                || cleanTitle.equals(cleanText(GuiManager.T_DO_UP))
-                || cleanTitle.contains("个人Kit")
-                || cleanTitle.contains("玩家Kit")
-                || cleanTitle.contains("管理他人Kit")
-                || cleanTitle.contains("查看共享Kit")
-                || cleanTitle.contains("我的共享Kit")
-                || cleanTitle.contains("编辑共享Kit")
-                || cleanTitle.contains("放弃编辑")
-                || cleanTitle.contains("确认删除补给");
     }
 
     private boolean closeRestrictedKitloaderGui(Player player, String cleanTitle) {
@@ -317,82 +268,69 @@ public class KitListener implements Listener {
 
         ItemStack pickupItem = realItem.clone();
         plugin.markKitloaderShulker(pickupItem);
-        int hotbarSlot = event.getHotbarButton();
-        if (!canQueueTemplatePickup(player, click, hotbarSlot, pickupItem)) {
+        if (click == ClickType.LEFT) {
+            ItemStack cursor = event.getCursor();
+            if (cursor != null && !cursor.getType().isAir()) {
+                templatePickupLocks.remove(player.getUniqueId());
+                return false;
+            }
+
+            Inventory sourceInventory = event.getView().getTopInventory();
+            int sourceSlot = event.getRawSlot();
+            ItemStack displayTemplate = event.getCurrentItem() != null
+                    ? event.getCurrentItem().clone() : null;
+            event.setCurrentItem(pickupItem);
+            event.setCancelled(false);
+            player.getScheduler().runDelayed(plugin, task -> {
+                templatePickupLocks.remove(player.getUniqueId());
+                if (displayTemplate != null
+                        && player.getOpenInventory().getTopInventory() == sourceInventory) {
+                    sourceInventory.setItem(sourceSlot, displayTemplate);
+                }
+            }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
+            return true;
+        }
+
+        boolean granted = false;
+        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
+            int requestedAmount = pickupItem.getAmount();
+            Map<Integer, ItemStack> remaining = player.getInventory().addItem(pickupItem);
+            int remainingAmount = remaining.values().stream().mapToInt(ItemStack::getAmount).sum();
+            granted = remainingAmount < requestedAmount;
+        } else if (click == ClickType.NUMBER_KEY) {
+            int hotbarSlot = event.getHotbarButton();
+            if (hotbarSlot >= 0 && hotbarSlot <= 8) {
+                ItemStack target = player.getInventory().getItem(hotbarSlot);
+                if (target == null || target.getType().isAir()) {
+                    player.getInventory().setItem(hotbarSlot, pickupItem);
+                    granted = true;
+                } else if (target.isSimilar(pickupItem)
+                        && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize()) {
+                    target.setAmount(target.getAmount() + pickupItem.getAmount());
+                    granted = true;
+                }
+            }
+        } else {
+            ItemStack target = player.getInventory().getItemInOffHand();
+            if (target == null || target.getType().isAir()) {
+                player.getInventory().setItemInOffHand(pickupItem);
+                granted = true;
+            } else if (target.isSimilar(pickupItem)
+                    && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize()) {
+                target.setAmount(target.getAmount() + pickupItem.getAmount());
+                player.getInventory().setItemInOffHand(target);
+                granted = true;
+            }
+        }
+
+        if (!granted) {
             templatePickupLocks.remove(player.getUniqueId());
             return false;
         }
-
-        player.getScheduler().runDelayed(plugin, task -> {
-            try {
-                if (player.isOnline()) {
-                    grantTemplatePickup(player, click, hotbarSlot, pickupItem);
-                    player.updateInventory();
-                }
-            } finally {
-                templatePickupLocks.remove(player.getUniqueId());
-            }
-        }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
+        player.getScheduler().runDelayed(plugin,
+                task -> templatePickupLocks.remove(player.getUniqueId()),
+                () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
         return true;
-    }
-
-    private boolean canQueueTemplatePickup(Player player, ClickType click, int hotbarSlot, ItemStack pickupItem) {
-        if (click == ClickType.LEFT) {
-            ItemStack cursor = player.getItemOnCursor();
-            return cursor == null || cursor.getType().isAir();
-        }
-        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
-            return canInventoryAccept(player.getInventory(), pickupItem);
-        }
-        if (click == ClickType.NUMBER_KEY) {
-            return hotbarSlot >= 0 && hotbarSlot <= 8
-                    && canStackInto(player.getInventory().getItem(hotbarSlot), pickupItem);
-        }
-        return canStackInto(player.getInventory().getItemInOffHand(), pickupItem);
-    }
-
-    private void grantTemplatePickup(Player player, ClickType click, int hotbarSlot, ItemStack pickupItem) {
-        ItemStack grantedItem = pickupItem.clone();
-        if (click == ClickType.LEFT) {
-            ItemStack cursor = player.getItemOnCursor();
-            if (cursor == null || cursor.getType().isAir()) player.setItemOnCursor(grantedItem);
-            return;
-        }
-        if (click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
-            player.getInventory().addItem(grantedItem);
-            return;
-        }
-
-        ItemStack target = click == ClickType.NUMBER_KEY
-                ? player.getInventory().getItem(hotbarSlot)
-                : player.getInventory().getItemInOffHand();
-        if (!canStackInto(target, grantedItem)) return;
-        if (target == null || target.getType().isAir()) {
-            if (click == ClickType.NUMBER_KEY) player.getInventory().setItem(hotbarSlot, grantedItem);
-            else player.getInventory().setItemInOffHand(grantedItem);
-            return;
-        }
-
-        target.setAmount(target.getAmount() + grantedItem.getAmount());
-        if (click == ClickType.NUMBER_KEY) player.getInventory().setItem(hotbarSlot, target);
-        else player.getInventory().setItemInOffHand(target);
-    }
-
-    private boolean canInventoryAccept(Inventory inventory, ItemStack pickupItem) {
-        int remaining = pickupItem.getAmount();
-        for (ItemStack item : inventory.getStorageContents()) {
-            if (item == null || item.getType().isAir()) return true;
-            if (!item.isSimilar(pickupItem)) continue;
-            remaining -= Math.max(0, item.getMaxStackSize() - item.getAmount());
-            if (remaining <= 0) return true;
-        }
-        return false;
-    }
-
-    private boolean canStackInto(ItemStack target, ItemStack pickupItem) {
-        return target == null || target.getType().isAir()
-                || target.isSimilar(pickupItem)
-                && target.getAmount() + pickupItem.getAmount() <= target.getMaxStackSize();
     }
 
     private boolean storeSupplyInConfiguredEnderChest(Player player, DataManager.PlayerData pData, ItemStack supply) {
@@ -1219,16 +1157,7 @@ public class KitListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
-    public void resyncKitloaderClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (!isKitloaderGui(cleanText(event.getView().getTitle()))) return;
-        player.getScheduler().runDelayed(plugin, task -> {
-            if (player.isOnline()) player.updateInventory();
-        }, null, 2L);
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
@@ -1242,9 +1171,7 @@ public class KitListener implements Listener {
         if (pData == null) return;
 
         int slot = event.getRawSlot();
-        boolean topInventoryClick = isTopInventoryClick(event);
-        boolean bottomInventoryClick = isBottomInventoryClick(event);
-        ItemStack clickedItem = resolveClickedItem(event);
+        ItemStack clickedItem = event.getCurrentItem();
 
         String tSavePlayer = cleanText(GuiManager.T_SAVE_PLAYER);
         String tDelPlayer = cleanText(GuiManager.T_DEL_PLAYER);
@@ -1556,7 +1483,7 @@ public class KitListener implements Listener {
 
         if (cleanTitle.contains("查看共享Kit")) {
             event.setCancelled(true);
-            if (topInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 if (slot == 45) {
                     gui.openCategoryGui(player, "public_kits", 0);
                 } else if (slot == 53) {
@@ -1708,7 +1635,7 @@ public class KitListener implements Listener {
         }
 
         if (cleanTitle.contains("编辑共享Kit:")) {
-            if (topInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 if (slot >= 41 && slot <= 53) {
                     event.setCancelled(true);
                     String kitId = gui.getPublicTargetCache(player.getUniqueId());
@@ -1743,7 +1670,7 @@ public class KitListener implements Listener {
             Inventory ec = player.getEnderChest();
             int maxSlots = Math.min(uiSlots, Math.min(45, ec.getSize()));
 
-            if (topInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 if (slot == 49) {
                     gui.openCategoryGui(player, "supply", 0);
                     return;
@@ -1768,7 +1695,7 @@ public class KitListener implements Listener {
                     gui.openDedicatedEnderChestGui(player);
                 }
             }
-            else if (bottomInventoryClick) {
+            else if (event.getClickedInventory() == event.getView().getBottomInventory()) {
                 if (clickedItem == null || clickedItem.getType().isAir()) return;
 
                 long nowClick = System.currentTimeMillis();
@@ -1855,7 +1782,7 @@ public class KitListener implements Listener {
             int currentPage = 0;
             try { currentPage = Integer.parseInt(rawData) - 1; } catch (NumberFormatException ignored) {}
 
-            if (bottomInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
                 if (clickedItem == null || !plugin.isKitloaderShulker(clickedItem)) return;
                 ItemStack cleanSupply = gui.createUploadedSupplyDeliveryCopy(clickedItem);
                 plugin.markKitloaderShulker(cleanSupply);
@@ -1865,7 +1792,7 @@ public class KitListener implements Listener {
                 }
                 return;
             }
-            if (!topInventoryClick) return;
+            if (event.getClickedInventory() != event.getView().getTopInventory()) return;
 
             if (slot == 36 && clickedItem != null && clickedItem.getType() == Material.ARROW) {
                 gui.openSupplyEnderChestGui(player, currentPage - 1);
@@ -1999,10 +1926,10 @@ public class KitListener implements Listener {
         boolean isRestricted = plugin.isRestrictedKitloaderPlayer(player);
 
             if (isRestricted && !isOther) {
-                if (bottomInventoryClick && event.isShiftClick()) {
+                if (event.getClickedInventory() == event.getView().getBottomInventory() && event.isShiftClick()) {
                     event.setCancelled(true); return;
                 }
-                if (topInventoryClick) {
+                if (event.getClickedInventory() == event.getView().getTopInventory()) {
                     event.setCancelled(true);
                     if (slot == 45) {
                         gui.openPlayerKitListGui(player, new ArrayList<>(pData.kits.keySet()));
@@ -2013,12 +1940,12 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (bottomInventoryClick && event.isShiftClick()) {
+            if (event.getClickedInventory() == event.getView().getBottomInventory() && event.isShiftClick()) {
                 moveShiftClickedItemIntoKitEditor(event);
                 return;
             }
 
-            if (topInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 if (slot >= 41 && slot <= 53) {
                     event.setCancelled(true);
                     if (slot == 45) {
@@ -2087,7 +2014,7 @@ public class KitListener implements Listener {
 
         String rawEditPrefix = cleanText(plugin.getGuiTitle("edit-prefix", ""));
         if (cleanTitle.startsWith(rawEditPrefix) && cleanTitle.contains(" - P")) {
-            if (topInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getTopInventory()) {
                 if (slot >= 36 && slot <= 53) {
                     event.setCancelled(true);
                     if (clickedItem != null && clickedItem.getType() == Material.ARROW) {
@@ -2541,7 +2468,7 @@ public class KitListener implements Listener {
             int enderStart = toolbarStart + 9;
             int enderSlots = Math.min(gui.getUploadedSupplyEnderSlots(), player.getEnderChest().getSize());
 
-            if (bottomInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
                 if (clickedItem == null || !plugin.isKitloaderShulker(clickedItem)) return;
                 ItemStack cleanSupply = gui.createUploadedSupplyDeliveryCopy(clickedItem);
                 plugin.markKitloaderShulker(cleanSupply);
@@ -2644,7 +2571,7 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (bottomInventoryClick) {
+            if (event.getClickedInventory() == event.getView().getBottomInventory()) {
                 if (event.isShiftClick()) {
                     event.setCancelled(true);
                     if (clickedItem == null || clickedItem.getType().isAir()) return;
@@ -2683,7 +2610,8 @@ public class KitListener implements Listener {
                 return;
             }
 
-            if (!topInventoryClick) return;
+            if (event.getClickedInventory() == null
+                    || event.getClickedInventory() != event.getView().getTopInventory()) return;
             if (slot == 45 || slot == 53) {
                 event.setCancelled(true);
                 if (clickedItem != null && clickedItem.getType() == Material.ARROW) {

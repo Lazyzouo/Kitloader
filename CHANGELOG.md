@@ -4,6 +4,28 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.6] - 2026-07-29
+
+### Changed
+
+- Restored the proven Kitloader 1.4.1 inventory interaction model: GUI controls are handled directly by the native inventory click event, and left-click claims temporarily expose the deliverable item to Minecraft's own slot transaction before restoring the display template on the next player tick.
+- Shift-click, number-key, and offhand claims now complete inside the click event again. The one-tick per-player claim lock remains active to prevent repeated same-tick grants.
+
+### Fixed
+
+- Removed the 2.0.5 raw-slot wrapper and delayed forced-resynchronization layer, which competed with Minecraft's inventory transaction while a player was moving. Item claims, refresh controls, category switches, and page arrows now follow the same interaction path as 1.4.1.
+
+## [2.0.6] - 2026-07-29（中文）
+
+### 变更
+
+- 恢复经 Kitloader 1.4.1 验证的库存交互模型：GUI 控件直接在原生库存点击事件中处理；左键领取时临时将真实领取物品放入被点击槽位，让 Minecraft 自身完成槽位事务，并在下一玩家刻恢复展示模板。
+- Shift 点击、数字键及副手领取重新在点击事件内即时完成；每名玩家一刻领取锁继续保留，防止同一刻重复发放。
+
+### 修复
+
+- 移除 2.0.5 新增、会在玩家移动时与 Minecraft 库存事务竞争的原始槽位包装及延迟强制同步层。物品领取、刷新、分类切换及翻页现在与 1.4.1 使用同一条交互路径。
+
 ## [2.0.5] - 2026-07-29
 
 ### Changed
