@@ -4,6 +4,20 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.13] - 2026-07-30
+
+### Changed
+
+- All chat, help-menu, and feedback text sent to players is now left-aligned at send time. Presentation padding before the first visible character is removed while legacy/hex colors and formatting remain intact.
+- Localized, configured, and hard-coded player messages now share the same alignment path. The server-console startup banner and console messages are unchanged.
+
+## [2.0.13] - 2026-07-30（中文）
+
+### 变更
+
+- 所有发送给玩家的聊天、帮助菜单及操作提示文本现在都会在发送时统一左对齐。首个可见字符前用于排版的空白会被移除，原有传统颜色、十六进制颜色及格式代码保持不变。
+- 本地化文本、配置文本和源码内玩家提示现已共用同一套对齐入口；服务器后台启动横幅及后台消息不受影响。
+
 ## [2.0.12] - 2026-07-30
 
 ### Changed

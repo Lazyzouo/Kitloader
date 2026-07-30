@@ -355,6 +355,31 @@ public class Kitloader extends JavaPlugin {
         return languageManager.getMessageString(key, fallback);
     }
 
+    static String leftAlignGameText(String text) {
+        if (text == null || text.isEmpty()) return text;
+
+        StringBuilder formatting = new StringBuilder();
+        int index = 0;
+        while (index < text.length()) {
+            if (text.charAt(index) == '\u00a7' && index + 1 < text.length()) {
+                formatting.append(text, index, index + 2);
+                index += 2;
+                continue;
+            }
+
+            int codePoint = text.codePointAt(index);
+            if (!Character.isWhitespace(codePoint)) break;
+            index += Character.charCount(codePoint);
+        }
+        return formatting.append(text, index, text.length()).toString();
+    }
+
+    public void sendGameMessage(CommandSender sender, String message) {
+        if (sender == null || message == null) return;
+        String colored = color(message);
+        sender.sendMessage(sender instanceof Player ? leftAlignGameText(colored) : colored);
+    }
+
     public void sendMsg(CommandSender sender, String key, String... placeholders) {
         if (sender == null) return;
         String prefix = color(languageManager.getMessageString("prefix", ""));
@@ -368,7 +393,7 @@ public class Kitloader extends JavaPlugin {
                 if (line == null || line.trim().isEmpty()) continue;
                 line = applyPlaceholders(line, placeholders);
                 line = line.replace("{prefix}", prefix).replace("{version}", getDescription().getVersion()).replace("{author}", author);
-                sender.sendMessage(color(line));
+                sendGameMessage(sender, line);
             }
         } else {
             String msg = configured instanceof String value ? value : null;
@@ -376,7 +401,7 @@ public class Kitloader extends JavaPlugin {
             msg = applyPlaceholders(msg, placeholders);
             msg = msg.replace("{prefix}", prefix).replace("{version}", getDescription().getVersion()).replace("{author}", author);
             for (String line : msg.split("\\n")) {
-                sender.sendMessage(color(line));
+                sendGameMessage(sender, line);
             }
         }
     }

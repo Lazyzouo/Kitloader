@@ -37,9 +37,9 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
                         && (line.toLowerCase().contains("/inv ") || line.toLowerCase().contains("/regear "))) {
                     continue;
                 }
-                sender.sendMessage(Kitloader.color(line
+                plugin.sendGameMessage(sender, line
                         .replace("{version}", version)
-                        .replace("{author}", author)));
+                        .replace("{author}", author));
             }
         } else {
             plugin.sendMsg(sender, "player_help_menu");
@@ -62,7 +62,7 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[1].equalsIgnoreCase("list")) {
             if (!player.isOp() && !player.hasPermission(adminPerm)) {
-                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l你没有权限查看别人的Kit！"));
+                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l你没有权限查看别人的Kit！");
                 return true;
             }
             String targetName = args[0];
@@ -72,7 +72,7 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
             if (targetData != null && !targetData.kits.isEmpty()) {
                 guiManager.openOtherPlayerKitListGui(player, targetName, new ArrayList<>(targetData.kits.keySet()));
             } else {
-                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l玩家 &f&l" + targetName + " &#ff5e62&l没有任何保存的Kit！"));
+                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l玩家 &f&l" + targetName + " &#ff5e62&l没有任何保存的Kit！");
             }
             return true;
         }
@@ -122,14 +122,14 @@ public class PlayerKitCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             if (pData.kits.containsKey(newName)) {
-                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l已存在同名的Kit，请换一个名称！"));
+                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l已存在同名的Kit，请换一个名称！");
                 return true;
             }
 
             ItemStack[] kitItems = pData.kits.remove(oldName);
             pData.kits.put(newName, kitItems);
             dataManager.savePlayerAsync(player.getUniqueId());
-            player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#00b09b&lKit已成功重命名为: &f&l" + newName));
+            plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#00b09b&lKit已成功重命名为: &f&l" + newName);
             return true;
         }
 

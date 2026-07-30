@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.12
+**Version:** 2.0.13
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,10 +14,12 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-2.0.12-en.us.jar` | `en_US` | English servers |
-| `Kitloader-2.0.12-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.13-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.13-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
+
+All chat, help-menu, and feedback text sent to players is normalized to left alignment at send time. Leading presentation spaces before the first visible character are ignored even when they come from an existing local configuration or a hot reload; color and formatting codes are preserved. Console output, including the startup banner, keeps its existing layout.
 
 ## 2. Commands and access
 
@@ -119,7 +121,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.12
+**版本：**2.0.13
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -131,10 +133,12 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-2.0.12-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-2.0.12-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.13-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.13-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
+
+所有发送给玩家的聊天、帮助菜单及操作提示文本都会在发送时统一左对齐。即使前导空格来自现有本地配置或热重载内容，首个可见字符前的排版空白也会被忽略；颜色及格式代码会完整保留。服务器后台输出（包括启动横幅）保持现有布局。
 
 ## 2. 指令与权限
 

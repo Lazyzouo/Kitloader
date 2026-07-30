@@ -27,7 +27,7 @@ public class KitloaderCommand implements CommandExecutor, TabCompleter {
 
     private void sendFormatMsg(CommandSender sender, String text) {
         String prefix = Kitloader.color(plugin.getMessageString("prefix", "&#00D2FF&l[&#3A7BD5&lKitloader&#00D2FF&l] &8&l» &7&l"));
-        sender.sendMessage(Kitloader.color(prefix + text));
+        plugin.sendGameMessage(sender, prefix + text);
     }
 
     @Override

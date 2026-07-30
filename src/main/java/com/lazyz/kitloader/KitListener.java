@@ -618,7 +618,7 @@ public class KitListener implements Listener {
             } else if (pData.publicEditSession != null && pData.publicEditSession.isNaming) {
                 pData.publicEditSession.name = coloredName;
                 pData.publicEditSession.isNaming = false;
-                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit已命名为: &f&l" + coloredName));
+                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit已命名为: &f&l" + coloredName);
                 player.getScheduler().run(plugin, task -> gui.openConfirmPublicUploadGui(player), null);
             } else if (pData.namingContext != null) {
                 DataManager.NamingContext ctx = pData.namingContext;
@@ -629,7 +629,7 @@ public class KitListener implements Listener {
 
                     boolean exists = data.publicKits.stream().anyMatch(k -> k.kitName.equals(newName) && !k.id.equals(kitId));
                     if (exists) {
-                        player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l已存在同名共享Kit！"));
+                        plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l已存在同名共享Kit！");
                         player.getScheduler().run(plugin, task -> {
                             DataManager.PublicKit targetPk = data.publicKits.stream().filter(k -> k.id.equals(kitId)).findFirst().orElse(null);
                             if (targetPk != null) gui.openPublicKitEditGui(player, targetPk, true);
@@ -641,7 +641,7 @@ public class KitListener implements Listener {
                             targetPk.items = gui.getPublicKitEditCache(player.getUniqueId());
                             data.savePublicKits();
                             gui.clearPublicCache(player.getUniqueId());
-                            player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit已重命名为: &f&l" + newName));
+                            plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit已重命名为: &f&l" + newName);
                             pData.namingContext = null;
                             player.getScheduler().run(plugin, task -> gui.openPublicKitEditGui(player, targetPk, false), null);
                         }
@@ -1244,7 +1244,7 @@ public class KitListener implements Listener {
 
                 pData.publicEditSession = null;
                 data.savePlayerAsync(player.getUniqueId());
-                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l一键共享Kit已成功发布全局！"));
+                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l一键共享Kit已成功发布全局！");
                 gui.openCategoryGui(player, "public_kits", 0);
             } else if (slot == 13) {
                 gui.setSkipNextClose(player); player.closeInventory();
@@ -1263,7 +1263,7 @@ public class KitListener implements Listener {
                 if (kitId != null) {
                     data.publicKits.removeIf(k -> k.id.equals(kitId));
                     data.savePublicKits();
-                    player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功永久删除该共享Kit！"));
+                    plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功永久删除该共享Kit！");
                 }
                 gui.clearPublicCache(player.getUniqueId());
                 gui.openCategoryGui(player, "public_kits", 0);
@@ -1326,7 +1326,7 @@ public class KitListener implements Listener {
                     if (pk != null && bkKit != null) {
                         pk.items = bkKit;
                         data.savePublicKits();
-                        player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit保存成功！"));
+                        plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit保存成功！");
                     }
                     gui.clearPublicCache(player.getUniqueId());
                     gui.openCategoryGui(player, "public_kits", 0);
@@ -1499,7 +1499,7 @@ public class KitListener implements Listener {
 
                     if (isRestricted && pData.hasUsed) {
                         gui.setSkipNextClose(player); player.closeInventory();
-                        player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前世界仅限使用一次Kitloader，您已使用过一次，请死亡复活后再试！"));
+                        plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前世界仅限使用一次Kitloader，您已使用过一次，请死亡复活后再试！");
                         return;
                     }
 
@@ -1535,7 +1535,7 @@ public class KitListener implements Listener {
                     data.markKitLoaded(player);
 
                     if (!pData.hasUsed) { pData.hasUsed = true; data.savePlayerAsync(player.getUniqueId()); }
-                    player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功提取并加载了该一键共享Kit！"));
+                    plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功提取并加载了该一键共享Kit！");
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                 }
             }
@@ -1768,7 +1768,7 @@ public class KitListener implements Listener {
                     if (isFull) {
                         gui.setSkipNextClose(player);
                         player.closeInventory();
-                        player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l您的专属末影箱已满，界面已自动关闭！"));
+                        plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l您的专属末影箱已满，界面已自动关闭！");
                     } else {
                         gui.openDedicatedEnderChestGui(player);
                     }
@@ -1876,7 +1876,7 @@ public class KitListener implements Listener {
                     if (isFull) {
                         gui.setSkipNextClose(player);
                         player.closeInventory();
-                        player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l末影箱前 9 格已满，界面已自动关闭！"));
+                        plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l末影箱前 9 格已满，界面已自动关闭！");
                     } else {
                         gui.openSupplyEnderChestGui(player, currentPage);
                     }
@@ -2543,8 +2543,8 @@ public class KitListener implements Listener {
                         if (areConfiguredEnderChestSlotsFull(player)) {
                             gui.setSkipNextClose(player);
                             player.closeInventory();
-                            player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前开放的 "
-                                    + enderSlots + " 格末影箱已满，界面已自动关闭！"));
+                            plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前开放的 "
+                                    + enderSlots + " 格末影箱已满，界面已自动关闭！");
                         } else {
                             gui.openUploadedSuppliesGui(player, currentPage);
                         }
@@ -2755,7 +2755,7 @@ public class KitListener implements Listener {
 
                             if (isRestricted && pData.hasUsed) {
                                 gui.setSkipNextClose(player); player.closeInventory();
-                                player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前世界仅限使用一次Kitloader，您已使用过一次，请死亡复活后再试！"));
+                                plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#ff5e62&l当前世界仅限使用一次Kitloader，您已使用过一次，请死亡复活后再试！");
                                 return;
                             }
 
@@ -2784,7 +2784,7 @@ public class KitListener implements Listener {
                             data.markKitLoaded(player);
 
                             if (!pData.hasUsed) { pData.hasUsed = true; data.savePlayerAsync(player.getUniqueId()); }
-                            player.sendMessage(Kitloader.color("&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功提取并加载了该一键共享Kit！"));
+                            plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功提取并加载了该一键共享Kit！");
                             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
                         } else if (event.getClick().isRightClick()) {
                             String adminPerm = plugin.getConfig().getString("settings.admin-permission", "kitloader.admin");
