@@ -24,7 +24,7 @@ public class Kitloader extends JavaPlugin {
     private UpdateChecker updateChecker;
 
     private static final String LEGACY_TRACK_TAG = "§r§0§k§r";
-    private static final int STARTUP_BANNER_WIDTH = 64;
+    private static final int STARTUP_BANNER_WIDTH = 72;
 
     @Override
     public void onEnable() {
@@ -406,9 +406,9 @@ public class Kitloader extends JavaPlugin {
                 : getDescription().getAuthors().get(0);
 
         logConsole(bannerBorder('='));
-        logConsole(bannerCentered("KITLOADER MANAGEMENT v" + version, "&b&l"));
-        logConsole(bannerCentered("KIT MANAGEMENT SERVICE / KIT 配装管理", "&f&l"));
-        logConsole(bannerBorder('-'));
+        logConsole(bannerCentered("KITLOADER LOADOUT SERVICE v" + version, "&b&l"));
+        logConsole(bannerCentered("KIT LOADOUT MANAGEMENT / KIT 配装管理", "&f&l"));
+        logConsole(bannerBorder('='));
         logConsole(bannerDetail("Version / 版本", version, "&a"));
         logConsole(bannerDetail("Author  / 作者", author, "&e"));
         logConsole(bannerDetail("Tested  / 测试", "Paper & Folia 1.21.11", "&a"));

@@ -4,6 +4,20 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.10] - 2026-07-30
+
+### Changed
+
+- Reworked the startup banner to match the compact service-console layout: 72-column cyan equals borders, two centered heading rows, a full-width equals separator, and tightly aligned detail rows.
+- The heading now identifies `KITLOADER LOADOUT SERVICE`, followed by `KIT LOADOUT MANAGEMENT / KIT 配装管理`; existing colored version, author, tested-platform, language, GitHub, and open-source fields remain.
+
+## [2.0.10] - 2026-07-30（中文）
+
+### 变更
+
+- 启动横幅改为紧凑服务后台样式：72 列青色等号边框、两行居中标题、整行等号分隔线及紧密对齐的详情行。
+- 主标题改为 `KITLOADER LOADOUT SERVICE`，副标题为 `KIT LOADOUT MANAGEMENT / KIT 配装管理`；现有彩色版本、作者、测试平台、语言、GitHub 与开源声明字段继续保留。
+
 ## [2.0.9] - 2026-07-30
 
 ### Changed
