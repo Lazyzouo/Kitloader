@@ -279,13 +279,21 @@ public class KitListener implements Listener {
             int sourceSlot = event.getRawSlot();
             ItemStack displayTemplate = event.getCurrentItem() != null
                     ? event.getCurrentItem().clone() : null;
-            event.setCurrentItem(pickupItem);
             event.setCancelled(false);
             player.getScheduler().runDelayed(plugin, task -> {
-                templatePickupLocks.remove(player.getUniqueId());
-                if (displayTemplate != null
-                        && player.getOpenInventory().getTopInventory() == sourceInventory) {
-                    sourceInventory.setItem(sourceSlot, displayTemplate);
+                try {
+                    if (!player.isOnline()) return;
+                    ItemStack currentCursor = player.getItemOnCursor();
+                    if (currentCursor == null || currentCursor.getType().isAir()
+                            || displayTemplate != null && currentCursor.isSimilar(displayTemplate)) {
+                        player.setItemOnCursor(pickupItem.clone());
+                    }
+                    if (displayTemplate != null
+                            && player.getOpenInventory().getTopInventory() == sourceInventory) {
+                        sourceInventory.setItem(sourceSlot, displayTemplate);
+                    }
+                } finally {
+                    templatePickupLocks.remove(player.getUniqueId());
                 }
             }, () -> templatePickupLocks.remove(player.getUniqueId()), 1L);
             return true;

@@ -474,6 +474,14 @@ public class GuiManager {
         return new ArrayList<>();
     }
 
+    private void runPlayerGuiTask(Player player, Runnable action) {
+        if (Bukkit.isOwnedByCurrentRegion(player)) {
+            action.run();
+            return;
+        }
+        player.getScheduler().run(plugin, task -> action.run(), null);
+    }
+
     private void startDynamicTask() {
         plugin.getServer().getAsyncScheduler().runAtFixedRate(plugin, scheduledTask -> {
             animationTick++;
@@ -492,7 +500,7 @@ public class GuiManager {
                 boolean isEditGui = rawTitle.equals("自定义补给盒");
 
                 if (isCategoryGui || isEditGui) {
-                    player.getScheduler().run(plugin, entityTask -> {
+                    runPlayerGuiTask(player, () -> {
                         if (!player.isOnline() || player.getOpenInventory().getTopInventory() == null) return;
                         if (player.getOpenInventory().getTopInventory() != capturedInventory
                                 || !player.getOpenInventory().getTitle().equals(currentTitle)) return;
@@ -530,7 +538,7 @@ public class GuiManager {
                                 topInv.setItem(47, colorSwitch);
                             }
                         }
-                    }, null);
+                    });
                 }
             }
         }, 100, 100, TimeUnit.MILLISECONDS);
@@ -977,7 +985,7 @@ public class GuiManager {
         String publicSupplyPrefix = categoryPrefix + supplyDisplay + " - P";
 
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            viewer.getScheduler().run(plugin, task -> {
+            runPlayerGuiTask(viewer, () -> {
                 if (!viewer.isOnline()) return;
                 String title = Kitloader.canonicalize(org.bukkit.ChatColor.stripColor(viewer.getOpenInventory().getTitle()));
                 if (title == null) return;
@@ -990,19 +998,19 @@ public class GuiManager {
                 } else if (title.contains("末影箱直存模式") && title.contains(" - P")) {
                     openSupplyEnderChestGui(viewer, page);
                 }
-            }, null);
+            });
         }
     }
 
     public void refreshUploadedSupplyManagementPage(UUID ownerId) {
         Player owner = Bukkit.getPlayer(ownerId);
         if (owner == null || !owner.isOnline()) return;
-        owner.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(owner, () -> {
             if (!owner.isOnline()) return;
             String title = Kitloader.canonicalize(org.bukkit.ChatColor.stripColor(owner.getOpenInventory().getTitle()));
             if (title == null || !title.contains("已上传的补给")) return;
             openUploadedSuppliesGui(owner, parseSupplyPage(title));
-        }, null);
+        });
     }
 
     private int parseSupplyPage(String title) {
@@ -1137,7 +1145,7 @@ public class GuiManager {
     }
 
     public void openCustomSupplyEditGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
             if (pData.editSession == null) pData.editSession = new DataManager.EditSession();
 
@@ -1158,11 +1166,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openPublicKitUploadGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
             if (pData.publicEditSession == null) pData.publicEditSession = new DataManager.EditPublicKitSession();
 
@@ -1181,11 +1189,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openMyPublicKitsGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             Inventory inv = Bukkit.createInventory(null, 54, Kitloader.color("&#F12711&l[=] &#F34217&l我&#F45E1E&l的&#F67924&l共&#F8952B&l享&#F9B031&lK&#F9B031&li&#F9B031&lt"));
 
             List<DataManager.PublicKit> myKits = new ArrayList<>();
@@ -1219,11 +1227,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openPublicKitViewGui(Player player, DataManager.PublicKit pk) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             Inventory inv = Bukkit.createInventory(null, 54, Kitloader.color("&#FF0099&l★ &#FF1188&l查&#FF2277&l看&#FF3366&l共&#FF4455&l享&#FF5544&lK&#FF5544&li&#FF5544&lt"));
             for (int i = 0; i < 41; i++) {
                 if (pk.items[i] != null) inv.setItem(i, pk.items[i].clone());
@@ -1235,11 +1243,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openPublicKitEditGui(Player player, DataManager.PublicKit pk, boolean fromCache) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             cachePublicTarget(player.getUniqueId(), pk.id);
             String title = Kitloader.color("&#FF0099&l编&#FF0E9B&l辑&#FF1C9D&l共&#FF2A9F&l享&#FF38A1&lK&#FF46A3&li&#FF54A5&lt&#FF62A7&l: &f&l" + pk.kitName);
             Inventory inv = Bukkit.createInventory(null, 54, title);
@@ -1271,7 +1279,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openUploadedSuppliesGui(Player player) {
@@ -1280,7 +1288,7 @@ public class GuiManager {
 
     public void openUploadedSuppliesGui(Player player, int requestedPage) {
         long navigationVersion = beginPageNavigation(player);
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             if (!isLatestPageNavigation(player, navigationVersion)) return;
 
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
@@ -1352,11 +1360,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openEnchantGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
             if (pData == null || pData.editItemSession == null) return;
 
@@ -1396,11 +1404,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openArmorTrimGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
             if (pData == null || pData.editItemSession == null) return;
 
@@ -1436,7 +1444,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     private org.bukkit.inventory.meta.trim.TrimMaterial getTrimMaterial(Material material) {
@@ -1469,7 +1477,7 @@ public class GuiManager {
     public static final String T_DO_UP = "&#11998E&l[?] ▲ 确认发布共享Kit";
 
     public void openConfirmGui(Player player, String title, String confirmText, String cancelText) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             Inventory inv = Bukkit.createInventory(null, 27, Kitloader.color(title));
             inv.setItem(11, createBtn(Material.LIME_STAINED_GLASS_PANE, "&#00B09B&l[✔] " + confirmText, ""));
             inv.setItem(15, createBtn(Material.RED_STAINED_GLASS_PANE, "&#FF5E62&l[✖] " + cancelText, ""));
@@ -1477,7 +1485,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openConfirmSavePlayerGui(Player player) { openConfirmGui(player, T_SAVE_PLAYER, "保存并返回", "放弃并返回"); }
@@ -1495,7 +1503,7 @@ public class GuiManager {
     public void openConfirmPublicCancelGui(Player player) { openConfirmGui(player, T_CANCEL_UP, "确认放弃并退出", "返回继续"); }
 
     public void openConfirmPublicUploadGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
             Inventory inv = Bukkit.createInventory(null, 27, Kitloader.color(T_DO_UP));
             inv.setItem(11, createBtn(Material.LIME_STAINED_GLASS_PANE, "&#00B09B&l[✔] 确认发布共享", "&#95A5A6&l将当前的背包直接作为Kit上传"));
@@ -1505,7 +1513,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openCategoryGui(Player player, String category, int page) {
@@ -1514,7 +1522,7 @@ public class GuiManager {
             return;
         }
         long navigationVersion = beginPageNavigation(player);
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             if (!isLatestPageNavigation(player, navigationVersion)) return;
             ItemStack[] allItems;
             String display;
@@ -1594,12 +1602,12 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openEditGui(Player player, String category, int page) {
         long navigationVersion = beginPageNavigation(player);
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             if (!isLatestPageNavigation(player, navigationVersion)) return;
             String title = plugin.getGuiTitle("edit-prefix", "") + category + " - P" + (page + 1);
             Inventory inv = Bukkit.createInventory(null, 54, title);
@@ -1618,7 +1626,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void saveCategoryItems(String category, int page, ItemStack[] pageContents) {
@@ -1652,7 +1660,7 @@ public class GuiManager {
     }
 
     public void openPlayerKitListGui(Player player, List<String> kitNames) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             String title = plugin.getGuiTitle("kit-list-title", "");
             Inventory inv = Bukkit.createInventory(null, 54, title);
 
@@ -1682,13 +1690,13 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openKitEditGui(Player player, String kitName) { openKitEditGui(player, kitName, false); }
 
     public void openKitEditGui(Player player, String kitName, boolean fromCache) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             cachePlayerTarget(player.getUniqueId(), kitName);
             String titlePrefix = plugin.getGuiTitle("kit-edit-prefix", "");
             Inventory inv = Bukkit.createInventory(null, 54, titlePrefix + kitName);
@@ -1729,11 +1737,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openOtherPlayerKitListGui(Player player, String targetName, List<String> kitNames) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             String title = Kitloader.color("&#FF0099&l管&#FF11A2&l理&#FF22AB&l玩&#FF33B4&l家&#FF44BD&lK&#FF55C6&li&#FF55C6&lt: &f&l" + targetName);
             Inventory inv = Bukkit.createInventory(null, 54, title);
 
@@ -1764,13 +1772,13 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openOtherPlayerKitEditGui(Player admin, String targetName, String kitName) { openOtherPlayerKitEditGui(admin, targetName, kitName, false); }
 
     public void openOtherPlayerKitEditGui(Player admin, String targetName, String kitName, boolean fromCache) {
-        admin.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(admin, () -> {
             cacheAdminTarget(admin.getUniqueId(), targetName, kitName);
             String title = Kitloader.color("&#FF0099&l管&#FF0E9B&l理&#FF1C9D&l他&#FF2A9F&l人&#FF38A1&lK&#FF46A3&li&#FF54A5&lt&#FF62A7&l: &f&l" + targetName + " &#808080&l- &e&l" + kitName);
             Inventory inv = Bukkit.createInventory(null, 54, title);
@@ -1805,12 +1813,12 @@ public class GuiManager {
             setNavigating(admin);
             admin.openInventory(inv);
             checkAndClearNavigating(admin);
-        }, null);
+        });
     }
 
     public void openSupplyEnderChestGui(Player player, int page) {
         long navigationVersion = beginPageNavigation(player);
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             if (!isLatestPageNavigation(player, navigationVersion)) return;
             String title = Kitloader.color("&#D32F2F&l末&#D73F46&l影&#DB4548&l箱&#DF4C4A&l直&#E3524C&l存&#E7594F&l模&#EB5F51&l式 &8&l- P" + (page + 1));
             Inventory inv = Bukkit.createInventory(null, 54, title);
@@ -1851,11 +1859,11 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     public void openDedicatedEnderChestGui(Player player) {
-        player.getScheduler().run(plugin, task -> {
+        runPlayerGuiTask(player, () -> {
             int uiSlots = plugin.getConfig().getInt("settings.shulker-limits.enderchest-max", 9);
             if (uiSlots <= 9) {
                 openSupplyEnderChestGui(player, 0);
@@ -1890,7 +1898,7 @@ public class GuiManager {
             setNavigating(player);
             player.openInventory(inv);
             checkAndClearNavigating(player);
-        }, null);
+        });
     }
 
     private static final class UploadedSupplyMetadata {

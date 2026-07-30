@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.11
+**Version:** 2.0.12
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,8 +14,8 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-2.0.11-en.us.jar` | `en_US` | English servers |
-| `Kitloader-2.0.11-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.12-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.12-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
 
@@ -94,8 +94,8 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ### Item editor
 
-- All Kitloader inventory controls use the native Bukkit 1.4.1 event model at default event priority, with `getClickedInventory()` and `getCurrentItem()` as the authoritative click state. Page, refresh, category, mouse, number-key, Shift-click, and drag actions remain executable while moving or jumping; protected toolbars, confirmation pages, and restricted slots stay locked.
-- Item claims retain the proven 1.4.1 transaction: left click lets Minecraft complete its native slot operation and restores the display template on the next player tick; Shift click, number-key, and offhand claims complete inside the event. A one-tick per-player lock prevents repeated same-tick grants.
+- Following the supplied MicroKits interaction model, Kitloader executes page construction and navigation immediately when the current inventory event owns the player's Paper/Folia region; only cross-thread calls use the player entity scheduler. Page, refresh, category, editor, confirmation, Ender Chest, and management actions therefore avoid an extra scheduler tick while moving or jumping.
+- Left-click claims leave Minecraft's native clicked stack untouched, then restore the display template and replace the cursor copy with the clean deliverable on the next player tick. An empty-cursor fallback covers a dropped movement-time transaction. Shift-click, number-key, and offhand claims remain direct, with the one-tick duplicate-claim lock.
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.
 - The disposal area intentionally produces no destruction sound and no "silent" wording.
@@ -119,7 +119,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.11
+**版本：**2.0.12
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -131,8 +131,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-2.0.11-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-2.0.11-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.12-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.12-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
 
@@ -211,8 +211,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 ### 物品编辑
 
-- 所有 Kitloader 库存控件均恢复使用 1.4.1 的 Bukkit 默认优先级原生事件模型，以 `getClickedInventory()` 与 `getCurrentItem()` 作为实际点击状态。玩家移动或跳跃时仍可执行翻页、刷新、分类、鼠标、数字键、Shift 点击与拖动；受保护工具栏、确认页面与受限槽位继续保持锁定。
-- 物品领取保留经 1.4.1 验证的事务：左键由 Minecraft 完成原生槽位操作，并在下一玩家刻恢复展示模板；Shift 点击、数字键及副手领取在事件内即时完成。每名玩家一刻领取锁可防止同一刻重复发放。
+- 按照提供的 MicroKits 交互模型，当前库存事件已持有玩家 Paper/Folia 区域线程时，Kitloader 会立即构建和切换页面；只有跨线程调用才使用玩家实体调度器。因此移动或跳跃时，翻页、刷新、分类、编辑、确认、末影箱及管理操作不会额外等待一个调度刻。
+- 左键领取不改写 Minecraft 原生点击槽位，下一玩家刻恢复展示模板并把光标中的展示副本替换为干净实际物品；移动时原生事务丢失且光标为空会触发补发。Shift 点击、数字键及副手领取仍直接执行，并保留一刻防重复领取锁。
 - 盔甲纹饰和原材料染色从可用项中随机选择，不再固定使用第一个。
 - 不兼容附魔会在冷却内拒绝，防止提示和拒绝音效刷屏。
 - 销毁区不播放销毁音效，也不显示“无声”字样。

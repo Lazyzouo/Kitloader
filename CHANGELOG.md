@@ -4,6 +4,28 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.12] - 2026-07-30
+
+### Changed
+
+- Ported the relevant MicroKits GUI interaction model: page construction and navigation now execute immediately when the inventory event already owns the player's Paper/Folia region, and use the player entity scheduler only for genuinely cross-thread calls.
+- Left-click template claims now leave Minecraft's native clicked stack untouched, restore the display template on the next player tick, and replace the received display copy with the clean deliverable item. An empty-cursor fallback completes the claim if movement causes the native cursor transaction to be dropped.
+
+### Fixed
+
+- Moving or jumping no longer adds an avoidable scheduler-tick delay before Kitloader page, refresh, category, editor, confirmation, Ender Chest, or management UI actions execute.
+
+## [2.0.12] - 2026-07-30（中文）
+
+### 变更
+
+- 移植 MicroKits 的相关 GUI 交互模型：库存事件已持有玩家 Paper/Folia 区域线程时立即构建和切换页面，只有真正跨线程的调用才交给玩家实体调度器。
+- 左键模板领取不再改写点击事件中的展示槽位；下一玩家刻恢复展示模板，并把收到的展示副本替换为干净的实际物品。若移动导致原生光标事务丢失，则在空光标时完成补发。
+
+### 修复
+
+- 玩家移动或跳跃时，Kitloader 的翻页、刷新、分类、编辑、确认、末影箱及管理页面操作不再额外等待一个调度刻才执行。
+
 ## [2.0.11] - 2026-07-30
 
 ### Changed
