@@ -24,6 +24,7 @@ public class Kitloader extends JavaPlugin {
     private UpdateChecker updateChecker;
 
     private static final String LEGACY_TRACK_TAG = "§r§0§k§r";
+    private static final int STARTUP_BANNER_WIDTH = 64;
 
     @Override
     public void onEnable() {
@@ -399,26 +400,66 @@ public class Kitloader extends JavaPlugin {
     }
 
     private void printStartupBanner() {
-        logConsole("&3&l+====================================================+");
-        logConsole("&b&l" + centerBannerLine("KITLOADER MANAGEMENT v" + getDescription().getVersion()));
-        logConsole("&3&l| &fVersion / 版本 &8: &a" + getDescription().getVersion());
-        logConsole("&3&l| &fAuthor  / 作者 &8: &eLazyz");
-        logConsole("&3&l| &fTested  / 测试 &8: &aPaper & Folia 1.21.11");
-        logConsole("&3&l| &fLanguage/ 语言 &8: &b" + languageManager.getLanguage());
-        logConsole("&3&l| &fGitHub         &8: &9" + UpdateChecker.REPOSITORY_URL);
-        logConsole("&3&l| &aOpen source. &fNo telemetry or server-data upload.");
-        logConsole("&3&l+====================================================+");
+        String version = getDescription().getVersion();
+        String author = getDescription().getAuthors().isEmpty()
+                ? "Unknown"
+                : getDescription().getAuthors().get(0);
+
+        logConsole(bannerBorder('='));
+        logConsole(bannerCentered("KITLOADER MANAGEMENT v" + version, "&b&l"));
+        logConsole(bannerCentered("KIT MANAGEMENT SERVICE / KIT 配装管理", "&f&l"));
+        logConsole(bannerBorder('-'));
+        logConsole(bannerDetail("Version / 版本", version, "&a"));
+        logConsole(bannerDetail("Author  / 作者", author, "&e"));
+        logConsole(bannerDetail("Tested  / 测试", "Paper & Folia 1.21.11", "&a"));
+        logConsole(bannerDetail("Language/ 语言", languageManager.getLanguage(), "&b"));
+        logConsole(bannerDetail("GitHub        ", UpdateChecker.REPOSITORY_URL, "&9"));
+        logConsole(bannerMessage(
+                "&aOpen source. &fNo telemetry or server-data upload.",
+                "Open source. No telemetry or server-data upload."));
+        logConsole(bannerBorder('='));
     }
 
     private void logConsole(String message) {
         getServer().getConsoleSender().sendMessage(color("&8[&bKitloader&8] &r" + message));
     }
 
-    private String centerBannerLine(String text) {
-        int width = 52;
-        int leftPadding = Math.max(0, (width - text.length()) / 2);
-        int rightPadding = Math.max(0, width - text.length() - leftPadding);
-        return "|" + " ".repeat(leftPadding) + text + " ".repeat(rightPadding) + "|";
+    private String bannerBorder(char fill) {
+        return "&3&l+" + String.valueOf(fill).repeat(STARTUP_BANNER_WIDTH) + "+";
+    }
+
+    private String bannerCentered(String text, String textColor) {
+        int textWidth = displayWidth(text);
+        int leftPadding = Math.max(0, (STARTUP_BANNER_WIDTH - textWidth) / 2);
+        int rightPadding = Math.max(0, STARTUP_BANNER_WIDTH - textWidth - leftPadding);
+        return "&3&l|" + " ".repeat(leftPadding) + textColor + text
+                + "&3&l" + " ".repeat(rightPadding) + "|";
+    }
+
+    private String bannerDetail(String label, String value, String valueColor) {
+        String plainText = label + " : " + value;
+        int rightPadding = Math.max(0, STARTUP_BANNER_WIDTH - 1 - displayWidth(plainText));
+        return "&3&l| &f" + label + " &8: " + valueColor + value
+                + "&3&l" + " ".repeat(rightPadding) + "|";
+    }
+
+    private String bannerMessage(String coloredText, String plainText) {
+        int rightPadding = Math.max(0, STARTUP_BANNER_WIDTH - 1 - displayWidth(plainText));
+        return "&3&l| " + coloredText + "&3&l" + " ".repeat(rightPadding) + "|";
+    }
+
+    private int displayWidth(String text) {
+        int width = 0;
+        for (int offset = 0; offset < text.length();) {
+            int codePoint = text.codePointAt(offset);
+            Character.UnicodeScript script = Character.UnicodeScript.of(codePoint);
+            width += script == Character.UnicodeScript.HAN
+                    || script == Character.UnicodeScript.HIRAGANA
+                    || script == Character.UnicodeScript.KATAKANA
+                    || script == Character.UnicodeScript.HANGUL ? 2 : 1;
+            offset += Character.charCount(codePoint);
+        }
+        return width;
     }
 
     private String applyPlaceholders(String text, String... placeholders) {

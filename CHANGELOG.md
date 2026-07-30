@@ -4,6 +4,20 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.9] - 2026-07-30
+
+### Changed
+
+- Expanded the startup console banner to a 64-column, fully bordered service layout with a centered Kitloader version heading, bilingual Kit-management subtitle, separator, and aligned detail rows.
+- Banner alignment now measures Han, Hiragana, Katakana, and Hangul characters as double-width so bilingual text keeps a consistent right border. Version, author, tested platform, language, GitHub, and open-source statements retain the colored console palette.
+
+## [2.0.9] - 2026-07-30（中文）
+
+### 变更
+
+- 启动后台横幅扩展为 64 列完整边框的服务布局，新增居中的 Kitloader 版本标题、中英 Kit 管理副标题、分隔线及对齐的详情行。
+- 横幅对齐会将汉字、平假名、片假名与韩文按双列宽度计算，使双语内容保持统一右边框；版本、作者、测试平台、语言、GitHub 与开源声明继续使用彩色后台配色。
+
 ## [2.0.8] - 2026-07-30
 
 ### Changed
