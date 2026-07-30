@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.10
+**Version:** 2.0.11
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,8 +14,8 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-2.0.10-en.us.jar` | `en_US` | English servers |
-| `Kitloader-2.0.10-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.11-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.11-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
 
@@ -103,7 +103,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 
 ## 5. Updating
 
-The startup banner uses a compact 72-column service-console layout with cyan equals borders, centered `KITLOADER LOADOUT SERVICE` and bilingual Kit-management headings, a full-width equals separator, and CJK-aware aligned detail rows. The banner, startup-success message, and all update-check states use one colored console prefix and status palette.
+The startup banner uses a compact 60-column service-console layout with cyan outer borders, centered `KITLOADER LOADOUT SERVICE` and bilingual Kit-management headings, a hyphen separator, and CJK-aware aligned detail rows. The banner, startup-success message, and all update-check states use one colored console prefix and status palette.
 
 At startup, Kitloader compares its version with the latest official Release. When a newer version exists and auto-download is enabled, it selects `Kitloader-<latest-version>-en.us.jar` or `Kitloader-<latest-version>-zh.cn.jar` from the active `language`, rejects files over 50 MiB, verifies the GitHub `sha256:` asset digest, and puts the verified JAR in Bukkit's update directory. It never replaces the running JAR. If any update step fails, the console prints the official Release URL for manual download.
 
@@ -119,7 +119,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.10
+**版本：**2.0.11
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -131,8 +131,8 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-2.0.10-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-2.0.10-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.11-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.11-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
 
@@ -219,7 +219,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 - 可见 Unicode 字符会在去除 Minecraft 颜色与格式代码后计数。官方默认物品名称 40 字符、个人/共享 Kit 与上传补给名称 18 字符，三项均可在 `settings.naming` 热修改；不可配置的 399 字符 Bukkit 展开安全线仍保留，达到 400 字符的持久化物品会在 ICUAC 扫描前递归删除。
 
 ## 5. 更新
-启动横幅采用紧凑的 72 列服务后台布局，包含青色等号边框、居中的 `KITLOADER LOADOUT SERVICE` 与中英 Kit 管理标题、整行等号分隔线，以及支持中日韩双列宽度的对齐详情行。横幅、启动成功消息与全部更新检查状态统一使用同一套彩色后台前缀及状态配色。
+启动横幅采用紧凑的 60 列服务后台布局，包含青色外边框、居中的 `KITLOADER LOADOUT SERVICE` 与中英 Kit 管理标题、短横线分隔线，以及支持中日韩双列宽度的对齐详情行。横幅、启动成功消息与全部更新检查状态统一使用同一套彩色后台前缀及状态配色。
 
 
 启动时，Kitloader 会与最新官方 Release 比较版本。当存在新版本并启用自动下载时，会根据当前 `language` 选择 `Kitloader-<latest-version>-en.us.jar` 或 `Kitloader-<latest-version>-zh.cn.jar`，拒绝大于 50 MiB 的文件，验证 GitHub `sha256:` 资源摘要，并将验证后的 JAR 放到 Bukkit 更新目录。它绝不会替换正在运行的 JAR。任一步失败时，后台会打印官方 Release 地址供手动下载。

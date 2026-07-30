@@ -4,6 +4,20 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.11] - 2026-07-30
+
+### Changed
+
+- Reduced the startup banner content width from 72 to 60 columns to match the compact console layout, and restored the hyphen separator between the bilingual heading and detail rows.
+- Existing colored fields, complete side borders, and CJK double-width alignment remain unchanged.
+
+## [2.0.11] - 2026-07-30（中文）
+
+### 变更
+
+- 启动横幅内容宽度从 72 列缩短为 60 列，以匹配紧凑后台布局，并恢复双语标题与详情行之间的短横线分隔。
+- 现有字段配色、完整左右边框及中日韩双列宽度对齐逻辑保持不变。
+
 ## [2.0.10] - 2026-07-30
 
 ### Changed
