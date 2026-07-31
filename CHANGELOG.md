@@ -4,6 +4,20 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.14] - 2026-07-31
+
+### Fixed
+
+- GUI click targets are now resolved from the server raw slot and inventory view instead of inventory-object identity. Server cores or inventory wrappers that return equivalent but distinct inventory objects can no longer let controls be picked up and visually refreshed without executing their action.
+- `/kitloader` now waits for the player's asynchronous data load before opening the category GUI. Clicks on an already-open category page are also cancelled while data is still loading, preventing slow production storage from exposing control items to native inventory movement.
+
+## [2.0.14] - 2026-07-31（中文）
+
+### 修复
+
+- GUI 点击目标现在依据服务端原始槽位和库存视图解析，不再依赖库存对象引用相等。对于会返回“内容等价但对象不同”库存包装的服务端核心，按钮不再出现被拿下、随后视觉刷新补回但功能未执行的情况。
+- `/kitloader` 现在会等待玩家异步数据加载完成后再打开分类界面；若已有分类界面仍处于数据加载阶段，其点击也会被取消，避免正式服存储较慢时按钮被原版库存事务移动。
+
 ## [2.0.13] - 2026-07-30
 
 ### Changed

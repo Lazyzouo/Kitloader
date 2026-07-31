@@ -45,6 +45,10 @@ public class KitloaderCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 0) {
             if (sender instanceof Player player) {
+                if (data.getPlayerData(player.getUniqueId()) == null) {
+                    plugin.sendMsg(player, "data_loading");
+                    return true;
+                }
                 String currentTitle = org.bukkit.ChatColor.stripColor(player.getOpenInventory().getTitle());
                 String categoryPrefix = org.bukkit.ChatColor.stripColor(plugin.getGuiTitle("category-prefix", ""));
                 if (currentTitle != null && categoryPrefix != null

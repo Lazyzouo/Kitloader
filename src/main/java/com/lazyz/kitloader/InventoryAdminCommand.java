@@ -305,8 +305,8 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
 
         if (holder instanceof PlayerListHolder listHolder) {
             event.setCancelled(true);
-            if (event.getClickedInventory() != event.getView().getTopInventory()) return;
             int slot = event.getRawSlot();
+            if (slot < 0 || slot >= event.getView().getTopInventory().getSize()) return;
             if (slot >= 0 && slot < listHolder.targets.size()) {
                 Player target = Bukkit.getPlayer(listHolder.targets.get(slot));
                 if (target == null) {
@@ -340,7 +340,7 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
             return;
         }
 
-        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+        if (rawSlot < topSize) {
             if (rawSlot == SAVE_EXIT_SLOT || rawSlot == DISCARD_EXIT_SLOT
                     || rawSlot == SWITCH_VIEW_SLOT || rawSlot == DISCARD_RETURN_SLOT) {
                 event.setCancelled(true);
@@ -352,9 +352,6 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
                 event.setCancelled(true);
                 return;
             }
-        } else if (rawSlot < topSize) {
-            event.setCancelled(true);
-            return;
         }
 
         markAdminInteraction(session, editorHolder.view);

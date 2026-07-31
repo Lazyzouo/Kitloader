@@ -97,6 +97,7 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 ### Item editor
 
 - Following the supplied MicroKits interaction model, Kitloader executes page construction and navigation immediately when the current inventory event owns the player's Paper/Folia region; only cross-thread calls use the player entity scheduler. Page, refresh, category, editor, confirmation, Ender Chest, and management actions therefore avoid an extra scheduler tick while moving or jumping.
+- GUI click regions are resolved from the server raw slot rather than inventory-object identity, so Paper/Folia forks and inventory wrappers cannot turn controls into movable items. `/kitloader` also waits for the player's asynchronous data load before opening its category page.
 - Left-click claims leave Minecraft's native clicked stack untouched, then restore the display template and replace the cursor copy with the clean deliverable on the next player tick. An empty-cursor fallback covers a dropped movement-time transaction. Shift-click, number-key, and offhand claims remain direct, with the one-tick duplicate-claim lock.
 - Armor trim and raw-material dyes choose a random eligible trim/material instead of always choosing the first entry.
 - Incompatible enchantments are rejected with a cooldown so messages and rejection sounds cannot flood the player.

@@ -295,8 +295,8 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
 
     private void handleListClick(Player admin, InventoryClickEvent event, SupplyListHolder holder) {
         event.setCancelled(true);
-        if (event.getClickedInventory() != event.getView().getTopInventory()) return;
         int slot = event.getRawSlot();
+        if (slot < 0 || slot >= event.getView().getTopInventory().getSize()) return;
         if (!event.getClick().isLeftClick() && slot >= PAGE_SIZE) return;
         if (slot == PREVIOUS_SLOT) {
             openList(admin, holder.page - 1);
@@ -325,7 +325,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
 
         int rawSlot = event.getRawSlot();
         int topSize = event.getView().getTopInventory().getSize();
-        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+        if (rawSlot >= 0 && rawSlot < topSize) {
             if (rawSlot >= 0 && rawSlot <= 26) {
                 if (wouldInsertShulker(admin, event)) {
                     event.setCancelled(true);
@@ -369,7 +369,13 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             return;
         }
 
-        if (rawSlot < topSize || event.getClickedInventory() == null) {
+        if (rawSlot < topSize) {
+            event.setCancelled(true);
+            return;
+        }
+        int convertedSlot = event.getView().convertSlot(rawSlot);
+        if (convertedSlot < 0
+                || convertedSlot >= event.getView().getBottomInventory().getSize()) {
             event.setCancelled(true);
             return;
         }
@@ -423,13 +429,14 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
 
     private void handleDeleteClick(Player admin, InventoryClickEvent event, ConfirmDeleteHolder holder) {
         event.setCancelled(true);
-        if (event.getClickedInventory() != event.getView().getTopInventory()) return;
+        int rawSlot = event.getRawSlot();
+        if (rawSlot < 0 || rawSlot >= event.getView().getTopInventory().getSize()) return;
         if (!event.getClick().isLeftClick()) return;
-        if (event.getRawSlot() == 15) {
+        if (rawSlot == 15) {
             openList(admin, holder.returnPage);
             return;
         }
-        if (event.getRawSlot() != 11) return;
+        if (rawSlot != 11) return;
 
         AdminSession session = sessions.get(admin.getUniqueId());
         if (session == null) return;
