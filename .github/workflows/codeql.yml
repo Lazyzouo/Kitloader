@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
           build-mode: manual
@@ -28,4 +28,4 @@ jobs:
           java-version: '21'
           cache: gradle
       - run: ./gradlew clean build --no-daemon --console=plain
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
