@@ -4,6 +4,72 @@ All notable changes are documented here. Versions follow `MAJOR.MINOR.PATCH`; ev
 
 所有重要变更均记录于此。版本遵循 `MAJOR.MINOR.PATCH`；每次发布功能更新都必须递增版本，重大更新递增 `MAJOR`。
 
+## [2.0.17] - 2026-08-04
+
+### Fixed
+
+- Direct management opened from `/kitloader edit supply` now returns to the OP supply editor page and its original page instead of the public supply page.
+
+## [2.0.17] - 2026-08-04（中文）
+
+### 修复
+
+- 从 `/kitloader edit supply` 进入玩家补给直接管理后，现在会返回 OP 补给编辑页及原来的页码，不再误回公共补给页。
+
+## [2.0.16] - 2026-08-04
+
+### Added
+
+- `config.yml` now has a versioned migration system. Startup and `/kitloader reload` add missing official keys without overwriting user values or unknown custom keys, preserve parsed comments, migrate legacy paths in sequence, and create timestamped backups before transactional replacement.
+- The Regear uploaded-supply management page now lets a whitelisted administrator hide or republish all supplies belonging to the target player. The change synchronizes player data, public pages, uploaded-supply management, and category editors immediately.
+
+### Fixed
+
+- A configuration using a newer unsupported schema is no longer downgraded. Invalid or unsafely writable configurations leave the original file in place; startup disables the plugin, while hot reload stops before refreshing dependent data.
+
+## [2.0.16] - 2026-08-04（中文）
+
+### 新增
+
+- `config.yml` 现已支持版本化迁移。服务器启动及 `/kitloader reload` 会在不覆盖用户值和未知自定义节点的前提下补入官方新增键、保留已解析注释、依次迁移旧路径，并在事务式替换前创建带时间戳的备份。
+- Regear 玩家上传补给管理页现在允许白名单管理员一键隐藏或重新公开目标玩家的全部补给；变更会立即同步玩家数据、公共补给页、已上传补给管理页及分类编辑页。
+
+### 修复
+
+- 使用更高且当前不支持的配置结构版本时不再被降级。配置无法解析或安全写入时会保留原文件；启动阶段会停用插件，热重载则会在刷新关联数据前停止。
+
+## [2.0.15] - 2026-08-04
+
+### Added
+
+- Public player-uploaded supplies now show the uploader and upload timestamp. A bypass-whitelisted OP can right-click one to open direct management, rename it, or permanently delete it through a second confirmation page.
+- `/kitloader edit supply` now merges static category supplies with every player-uploaded supply, including hidden uploads. Removing an uploaded supply there synchronizes its owner data, uploaded-supply management, public supply pages, and other open supply editors.
+- New custom-supply drafts default to the uploading player's in-game ID until the player chooses another name.
+
+### Changed
+
+- `/inv` now has only return and Ender Chest navigation controls. Inventory, equipment, and Ender Chest edits are committed in real time and are preserved when returning, closing the GUI, quitting, or disabling the plugin; save/discard rollback controls have been removed.
+
+### Fixed
+
+- Shared-Kit editors opened from public category page 2 or later now return to the exact originating page through unchanged returns, save/discard confirmations, rename flows, deletion confirmations, and GUI close handling.
+
+## [2.0.15] - 2026-08-04（中文）
+
+### 新增
+
+- 玩家上传的公共补给现在会显示上传者与上传年月日时间。在绕过白名单内的 OP 可右键打开直接管理页，重命名补给，或通过二次确认页面永久删除。
+- `/kitloader edit supply` 现在会合并显示静态分类补给与全部玩家上传补给（包括隐藏补给）。在该编辑页移除玩家补给时，会同步更新上传者数据、玩家“已上传补给”页、公共补给页及其他已打开的补给编辑页。
+- 新建自定义补给草稿在玩家未主动改名时，默认使用上传玩家的游戏 ID。
+
+### 变更
+
+- `/inv` 现在只保留返回与末影箱导航按钮。背包、装备和末影箱修改会实时提交，并在返回、关闭界面、退出服务器或插件停用时保留；保存/放弃及回滚按钮已移除。
+
+### 修复
+
+- 从公共分类第 2 页及以后进入共享 Kit 编辑器时，无改动返回、保存/放弃确认、重命名、删除确认及关闭界面现在都会回到进入时的原页。
+
 ## [2.0.14] - 2026-07-31
 
 ### Fixed

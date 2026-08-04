@@ -8,6 +8,9 @@
 #                                                                              #
 # ============================================================================ #
 
+# 配置结构版本，由 Kitloader 自动维护，请勿手动修改
+config-version: 1
+
 # 发行包默认语言：zh_CN 或 en_US
 language: zh_CN
 
@@ -174,6 +177,7 @@ messages:
   update_manual: "Kitloader {version} 可用，请从官方地址手动下载：{url}"
   update_failed: "Kitloader 自动更新失败：{reason}。请从官方地址手动下载：{url}"
   reload_success: "{prefix}&a&l操作成功 &#34495E&l► &#95A5A6&l配置文件与数据已成功重载！"
+  reload_failed: "{prefix}&c&l重载失败 &#34495E&l► &#95A5A6&l配置升级或读取失败，原文件未被覆盖；请查看服务器后台。"
   no_permission: "{prefix}&c&l权限不足 &#34495E&l► &#95A5A6&l你没有权限执行此命令！"
   player_only: "{prefix}&c&l操作失败 &#34495E&l► &#95A5A6&l只有在游戏内的玩家才能执行此操作！"
   data_loading: "{prefix}&e&l系统提示 &#34495E&l► &#95A5A6&l数据尚未加载完成，请稍后再试！"
@@ -305,6 +309,8 @@ messages:
   regear_name_updated: "{prefix}&a&l名称已更新到编辑预览，点击保存后才会写入目标数据。"
   regear_save_success: "{prefix}&a&l保存成功 &#34495E&l► &#95A5A6&l已同步更新玩家 {player} 的补给及公共记录。"
   regear_delete_success: "{prefix}&a&l删除成功 &#34495E&l► &#95A5A6&l已删除玩家 {player} 的补给 {box}。"
+  regear_visibility_public: "{prefix}&a&l公开状态已更新 &#34495E&l► &#95A5A6&l玩家 {player} 的全部补给现已公开。"
+  regear_visibility_hidden: "{prefix}&e&l隐藏状态已更新 &#34495E&l► &#95A5A6&l玩家 {player} 的全部补给已从公共补给页移除。"
 
   # ======================================================================
 

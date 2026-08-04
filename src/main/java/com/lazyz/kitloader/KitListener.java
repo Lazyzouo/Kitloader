@@ -38,12 +38,14 @@ public class KitListener implements Listener {
     private final Kitloader plugin;
     private final DataManager data;
     private final GuiManager gui;
+    private final RegearCommand regear;
     private final Set<UUID> templatePickupLocks = ConcurrentHashMap.newKeySet();
 
-    public KitListener(Kitloader plugin, DataManager data, GuiManager gui) {
+    public KitListener(Kitloader plugin, DataManager data, GuiManager gui, RegearCommand regear) {
         this.plugin = plugin;
         this.data = data;
         this.gui = gui;
+        this.regear = regear;
     }
 
     private String cleanText(String text) {
@@ -179,9 +181,9 @@ public class KitListener implements Listener {
         return false;
     }
 
-    private boolean isCategoryPageChanged(String category, int page, ItemStack[] current) {
+    private boolean isCategoryPageChanged(Player player, String category, int page, ItemStack[] current) {
         for (int i = 0; i < 36; i++) {
-            ItemStack o = gui.getCategoryItem(category, page, i);
+            ItemStack o = gui.getEditableCategoryItem(player, category, page, i);
             ItemStack c = current[i];
             boolean oEmpty = (o == null || o.getType().isAir());
             boolean cEmpty = (c == null || c.getType().isAir());
@@ -192,9 +194,9 @@ public class KitListener implements Listener {
         return false;
     }
 
-    private boolean isCategoryPageOriginallyEmpty(String category, int page) {
+    private boolean isCategoryPageOriginallyEmpty(Player player, String category, int page) {
         for (int i = 0; i < 36; i++) {
-            ItemStack orig = gui.getCategoryItem(category, page, i);
+            ItemStack orig = gui.getEditableCategoryItem(player, category, page, i);
             if (orig != null && !orig.getType().isAir()) {
                 return false;
             }
@@ -213,6 +215,13 @@ public class KitListener implements Listener {
         if (rawSlot < topSize) return false;
         int convertedSlot = event.getView().convertSlot(rawSlot);
         return convertedSlot >= 0 && convertedSlot < event.getView().getBottomInventory().getSize();
+    }
+
+    private void returnToPublicKitCategory(Player player) {
+        int returnPage = gui.getPublicCategoryReturnPage(player.getUniqueId());
+        gui.clearPublicCache(player.getUniqueId());
+        gui.clearPublicCategoryReturnPage(player.getUniqueId());
+        gui.openCategoryGui(player, "public_kits", returnPage);
     }
 
     private ItemStack getClickedItem(InventoryClickEvent event) {
@@ -445,11 +454,9 @@ public class KitListener implements Listener {
             String boxName = box.hasItemMeta() && box.getItemMeta().hasDisplayName()
                     ? cleanText(box.getItemMeta().getDisplayName())
                     : "未命名潜影盒";
-            gui.removeSupplyFromPublic(supplyId, player.getUniqueId());
-            pData.uploadedSupplies.remove(index);
-            pData.uploadedSupplyIds.remove(index);
-            data.savePlayerAsync(player.getUniqueId());
-            plugin.sendMsg(player, "supply_delete_success", "box", boxName);
+            if (gui.removeUploadedSupplyEverywhere(supplyId, player.getUniqueId())) {
+                plugin.sendMsg(player, "supply_delete_success", "box", boxName);
+            }
             break;
         }
         gui.clearUploadedSupplyTarget(player.getUniqueId());
@@ -961,9 +968,7 @@ public class KitListener implements Listener {
                     .filter(candidate -> candidate.id.equals(kitId)).findFirst().orElse(null);
             ItemStack[] currentKit = extractKitFromEditGui(e.getView().getTopInventory());
             if (kit == null || !isKitChanged(kit.items, currentKit)) {
-                gui.clearPublicCache(player.getUniqueId());
-                player.getScheduler().run(plugin,
-                        task -> gui.openCategoryGui(player, "public_kits", 0), null);
+                player.getScheduler().run(plugin, task -> returnToPublicKitCategory(player), null);
             } else {
                 gui.cachePublicKitEdit(player.getUniqueId(), currentKit);
                 gui.cachePublicTarget(player.getUniqueId(), kitId);
@@ -1029,19 +1034,20 @@ public class KitListener implements Listener {
             if (parts.length >= 2) {
                 String category = parts[0].trim();
                 int page = Integer.parseInt(parts[1].trim()) - 1;
+                if (category.equals("supply")) gui.sanitizeSupplyEditTakenItems(player);
 
-                if (!isCategoryPageChanged(category, page, contents)) {
+                if (!isCategoryPageChanged(player, category, page, contents)) {
                     return;
                 }
 
-                if (!hasAnyItem) {
-                    if (!isCategoryPageOriginallyEmpty(category, page)) {
+                if (!hasAnyItem && !category.equals("supply")) {
+                    if (!isCategoryPageOriginallyEmpty(player, category, page)) {
                         plugin.sendMsg(player, "category_empty_nosave");
                     }
                     return;
                 }
 
-                gui.saveCategoryItems(category, page, contents);
+                gui.saveCategoryItems(player, category, page, contents);
                 plugin.sendMsg(player, "gui_saved", "category", category, "page", String.valueOf(page + 1));
             }
         }
@@ -1150,6 +1156,26 @@ public class KitListener implements Listener {
 
         String rawEditPrefix = cleanText(plugin.getGuiTitle("edit-prefix", ""));
         if (cleanTitle.startsWith(rawEditPrefix) && cleanTitle.contains(" - P")) {
+            String editData = cleanTitle.substring(rawEditPrefix.length());
+            String[] editParts = editData.split(" - P");
+            if (editParts.length >= 2 && editParts[0].trim().equals("supply")) {
+                if (gui.getEditableUploadedSupplyDetails(event.getOldCursor()) != null) {
+                    event.setCancelled(true);
+                    return;
+                }
+                int editPage = 0;
+                try {
+                    editPage = Math.max(0, Integer.parseInt(editParts[1].trim()) - 1);
+                } catch (NumberFormatException ignored) {
+                }
+                for (int slot : event.getRawSlots()) {
+                    if (slot >= 0 && slot < 36
+                            && gui.getCachedEditableUploadedSupplyDetails(player, editPage, slot) != null) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+            }
             for (int slot : event.getRawSlots()) {
                 if (slot >= 36 && slot <= 53) {
                     event.setCancelled(true);
@@ -1298,10 +1324,17 @@ public class KitListener implements Listener {
                     data.savePublicKits();
                     plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l成功永久删除该共享Kit！");
                 }
-                gui.clearPublicCache(player.getUniqueId());
-                gui.openCategoryGui(player, "public_kits", 0);
+                returnToPublicKitCategory(player);
             } else if (slot == 15) {
-                gui.openMyPublicKitsGui(player);
+                if (gui.hasPublicCategoryReturnPage(player.getUniqueId())) {
+                    String kitId = gui.getPublicTargetCache(player.getUniqueId());
+                    DataManager.PublicKit pk = kitId == null ? null : data.publicKits.stream()
+                            .filter(candidate -> candidate.id.equals(kitId)).findFirst().orElse(null);
+                    if (pk != null) gui.openPublicKitEditGui(player, pk, true);
+                    else returnToPublicKitCategory(player);
+                } else {
+                    gui.openMyPublicKitsGui(player);
+                }
             }
             return;
         }
@@ -1339,8 +1372,7 @@ public class KitListener implements Listener {
             String kitId = gui.getPublicTargetCache(player.getUniqueId());
             if (kitId != null) {
                 if (slot == 11) {
-                    gui.clearPublicCache(player.getUniqueId());
-                    gui.openCategoryGui(player, "public_kits", 0);
+                    returnToPublicKitCategory(player);
                 } else if (slot == 15) {
                     DataManager.PublicKit pk = data.publicKits.stream().filter(k -> k.id.equals(kitId)).findFirst().orElse(null);
                     if (pk != null) gui.openPublicKitEditGui(player, pk, true);
@@ -1361,11 +1393,9 @@ public class KitListener implements Listener {
                         data.savePublicKits();
                         plugin.sendGameMessage(player, "&#00d2ff&l[&#3a7bd5&lKitloader&#00d2ff&l] &8&l» &#a8ff78&l共享Kit保存成功！");
                     }
-                    gui.clearPublicCache(player.getUniqueId());
-                    gui.openCategoryGui(player, "public_kits", 0);
+                    returnToPublicKitCategory(player);
                 } else if (slot == 15) {
-                    gui.clearPublicCache(player.getUniqueId());
-                    gui.openCategoryGui(player, "public_kits", 0);
+                    returnToPublicKitCategory(player);
                 }
             }
             return;
@@ -1664,6 +1694,7 @@ public class KitListener implements Listener {
                     final String fid = kitId;
                     DataManager.PublicKit targetKit = data.publicKits.stream().filter(k -> k.id.equals(fid)).findFirst().orElse(null);
                     if (targetKit != null) {
+                        gui.clearPublicCategoryReturnPage(player.getUniqueId());
                         if (event.getClick().isLeftClick()) {
                             gui.openPublicKitEditGui(player, targetKit, false);
                         } else if (event.getClick().isRightClick()) {
@@ -1684,7 +1715,7 @@ public class KitListener implements Listener {
                         ItemStack[] currentKit = extractKitFromEditGui(event.getView().getTopInventory());
                         DataManager.PublicKit pk = data.publicKits.stream().filter(k -> k.id.equals(kitId)).findFirst().orElse(null);
                         if (pk != null && !isKitChanged(pk.items, currentKit)) {
-                            gui.openCategoryGui(player, "public_kits", 0);
+                            returnToPublicKitCategory(player);
                         } else {
                             gui.cachePublicKitEdit(player.getUniqueId(), currentKit);
                             gui.openConfirmSavePublicGui(player);
@@ -1696,6 +1727,8 @@ public class KitListener implements Listener {
                         gui.setSkipNextClose(player); player.closeInventory();
                         sendNamingInstructions(player, plugin);
                     } else if (slot == 53) {
+                        gui.cachePublicKitEdit(player.getUniqueId(),
+                                extractKitFromEditGui(event.getView().getTopInventory()));
                         gui.openConfirmDeletePublicGui(player, kitId);
                     }
                     return;
@@ -2055,15 +2088,56 @@ public class KitListener implements Listener {
 
         String rawEditPrefix = cleanText(plugin.getGuiTitle("edit-prefix", ""));
         if (cleanTitle.startsWith(rawEditPrefix) && cleanTitle.contains(" - P")) {
+            String remaining = cleanTitle.substring(rawEditPrefix.length());
+            String[] editParts = remaining.split(" - P");
+            String editCategory = editParts.length >= 1 ? editParts[0].trim() : "";
+            int editPage = 0;
+            if (editParts.length >= 2) {
+                try {
+                    editPage = Math.max(0, Integer.parseInt(editParts[1].trim()) - 1);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            if (editCategory.equals("supply")
+                    && (event.getClick() == ClickType.DROP || event.getClick() == ClickType.CONTROL_DROP)) {
+                event.setCancelled(true);
+                return;
+            }
+            if (editCategory.equals("supply") && slot < 0
+                    && gui.getEditableUploadedSupplyDetails(event.getCursor()) != null) {
+                event.setCancelled(true);
+                return;
+            }
+
+            if (editCategory.equals("supply") && topInventoryClick && slot >= 0 && slot < 36) {
+                GuiManager.UploadedSupplyDetails details = gui.getEditableUploadedSupplyDetails(clickedItem);
+                if (details == null) {
+                    details = gui.getCachedEditableUploadedSupplyDetails(player, editPage, slot);
+                }
+                if (details != null) {
+                    boolean canManage = player.isOp() && plugin.isBypassWhitelisted(player);
+                    if (!canManage || event.getClick().isRightClick()) {
+                        event.setCancelled(true);
+                    }
+                    if (event.getClick().isRightClick()) {
+                        if (canManage) regear.openFromEditSupply(player, details.supplyId(), editPage);
+                        else plugin.sendMsg(player, "whitelist_command_denied");
+                    }
+                    if (!canManage) return;
+                    if (event.getClick().isRightClick()) return;
+                }
+            }
+
             if (topInventoryClick) {
                 if (slot >= 36 && slot <= 53) {
                     event.setCancelled(true);
                     if (clickedItem != null && clickedItem.getType() == Material.ARROW) {
-                        String remaining = cleanTitle.substring(rawEditPrefix.length());
                         String[] parts = remaining.split(" - P");
                         if (parts.length >= 2) {
                             String category = parts[0].trim();
                             int currentPage = Integer.parseInt(parts[1].trim()) - 1;
+                            if (category.equals("supply")) gui.sanitizeSupplyEditTakenItems(player);
 
                             boolean hasAnyItem = false;
                             ItemStack[] contents = new ItemStack[36];
@@ -2072,15 +2146,15 @@ public class KitListener implements Listener {
                                 if (contents[i] != null && !contents[i].getType().isAir()) hasAnyItem = true;
                             }
 
-                            boolean isChanged = isCategoryPageChanged(category, currentPage, contents);
+                            boolean isChanged = isCategoryPageChanged(player, category, currentPage, contents);
 
                             if (slot == 45 && currentPage > 0) {
                                 if (isChanged) {
-                                    if (hasAnyItem) {
-                                        gui.saveCategoryItems(category, currentPage, contents);
+                                    if (hasAnyItem || category.equals("supply")) {
+                                        gui.saveCategoryItems(player, category, currentPage, contents);
                                         plugin.sendMsg(player, "gui_saved", "category", category, "page", String.valueOf(currentPage + 1));
                                     } else {
-                                        if (!isCategoryPageOriginallyEmpty(category, currentPage)) {
+                                        if (!isCategoryPageOriginallyEmpty(player, category, currentPage)) {
                                             plugin.sendMsg(player, "category_empty_nosave");
                                         }
                                     }
@@ -2088,11 +2162,11 @@ public class KitListener implements Listener {
                                 gui.openEditGui(player, category, currentPage - 1);
                             } else if (slot == 53) {
                                 if (isChanged) {
-                                    if (hasAnyItem) {
-                                        gui.saveCategoryItems(category, currentPage, contents);
+                                    if (hasAnyItem || category.equals("supply")) {
+                                        gui.saveCategoryItems(player, category, currentPage, contents);
                                         plugin.sendMsg(player, "gui_saved", "category", category, "page", String.valueOf(currentPage + 1));
                                     } else {
-                                        if (!isCategoryPageOriginallyEmpty(category, currentPage)) {
+                                        if (!isCategoryPageOriginallyEmpty(player, category, currentPage)) {
                                             plugin.sendMsg(player, "category_empty_nosave");
                                         }
                                     }
@@ -2821,7 +2895,7 @@ public class KitListener implements Listener {
                         } else if (event.getClick().isRightClick()) {
                             String adminPerm = plugin.getConfig().getString("settings.admin-permission", "kitloader.admin");
                             if (player.isOp() || player.hasPermission(adminPerm)) {
-                                gui.openPublicKitEditGui(player, targetPk, false);
+                                gui.openPublicKitEditGui(player, targetPk, false, currentPage);
                             } else {
                                 gui.openPublicKitViewGui(player, targetPk);
                             }
@@ -2834,6 +2908,16 @@ public class KitListener implements Listener {
                         ? gui.getCachedVisibleSupplyItem(player, currentPage, slot)
                         : gui.getVisibleCategoryItem(player, currentCategory, currentPage, slot);
                 if (realItem == null || realItem.getType().isAir()) return;
+
+                if (currentCategory.equals("supply") && event.getClick().isRightClick()
+                        && player.isOp() && plugin.isBypassWhitelisted(player)) {
+                    GuiManager.UploadedSupplyDetails details =
+                            gui.getCachedVisibleUploadedSupplyDetails(player, currentPage, slot);
+                    if (details != null) {
+                        regear.openFromCategory(player, details.supplyId(), currentPage);
+                        return;
+                    }
+                }
                 boolean enchantable = gui.isEnchantable(realItem);
 
                 if (!currentCategory.equals("supply")) {

@@ -53,8 +53,10 @@ public class GuiManager {
 
     private final Map<java.util.UUID, ItemStack[]> publicKitEditCache = new ConcurrentHashMap<>();
     private final Map<java.util.UUID, String> publicTargetCache = new ConcurrentHashMap<>();
+    private final Map<java.util.UUID, Integer> publicCategoryReturnPages = new ConcurrentHashMap<>();
     private final Map<java.util.UUID, String> uploadedSupplyTargetCache = new ConcurrentHashMap<>();
     private final Map<java.util.UUID, SupplyPageView> supplyPageViews = new ConcurrentHashMap<>();
+    private final Map<java.util.UUID, SupplyPageView> supplyEditPageViews = new ConcurrentHashMap<>();
 
     private final Set<java.util.UUID> skipNextClose = ConcurrentHashMap.newKeySet();
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -100,7 +102,7 @@ public class GuiManager {
         startDynamicTask();
     }
 
-    private String formatTime(long time) {
+    private synchronized String formatTime(long time) {
         return dateFormat.format(new Date(time));
     }
 
@@ -121,6 +123,18 @@ public class GuiManager {
     public void cachePublicTarget(java.util.UUID uuid, String id) { publicTargetCache.put(uuid, id); }
     public String getPublicTargetCache(java.util.UUID uuid) { return publicTargetCache.get(uuid); }
     public void clearPublicCache(java.util.UUID uuid) { publicKitEditCache.remove(uuid); publicTargetCache.remove(uuid); }
+    public void setPublicCategoryReturnPage(java.util.UUID uuid, int page) {
+        publicCategoryReturnPages.put(uuid, Math.max(0, page));
+    }
+    public boolean hasPublicCategoryReturnPage(java.util.UUID uuid) {
+        return publicCategoryReturnPages.containsKey(uuid);
+    }
+    public int getPublicCategoryReturnPage(java.util.UUID uuid) {
+        return publicCategoryReturnPages.getOrDefault(uuid, 0);
+    }
+    public void clearPublicCategoryReturnPage(java.util.UUID uuid) {
+        publicCategoryReturnPages.remove(uuid);
+    }
 
     public void cacheUploadedSupplyTarget(java.util.UUID uuid, String supplyId) { uploadedSupplyTargetCache.put(uuid, supplyId); }
     public String getUploadedSupplyTarget(java.util.UUID uuid) { return uploadedSupplyTargetCache.get(uuid); }
@@ -283,8 +297,12 @@ public class GuiManager {
     }
 
     public void clearNavigationState(Player player) {
-        navigatingPlayers.remove(player.getUniqueId());
-        pageNavigationVersions.remove(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        navigatingPlayers.remove(playerId);
+        pageNavigationVersions.remove(playerId);
+        supplyPageViews.remove(playerId);
+        supplyEditPageViews.remove(playerId);
+        publicCategoryReturnPages.remove(playerId);
     }
 
     public void fillBeautifulGradient(Inventory inv, int emptyStart, int emptyEnd) {
@@ -909,7 +927,13 @@ public class GuiManager {
         DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
         if (pData == null) return true;
 
-        ensureUploadedSupplyMetadata(player, pData);
+        return toggleUploadedSuppliesVisibility(player.getUniqueId(), pData);
+    }
+
+    public boolean toggleUploadedSuppliesVisibility(UUID ownerId, DataManager.PlayerData pData) {
+        if (pData == null) return true;
+
+        ensureUploadedSupplyMetadata(ownerId, pData);
         pData.uploadedSuppliesVisible = !pData.uploadedSuppliesVisible;
         boolean hidden = !pData.uploadedSuppliesVisible;
 
@@ -917,7 +941,7 @@ public class GuiManager {
         synchronized (uploadedSupplyLock) {
             for (String supplyId : pData.uploadedSupplyIds) {
                 UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
-                if (record != null && record.owner.equals(player.getUniqueId()) && record.hidden != hidden) {
+                if (record != null && record.owner.equals(ownerId) && record.hidden != hidden) {
                     record.hidden = hidden;
                     recordsChanged = true;
                 }
@@ -926,7 +950,7 @@ public class GuiManager {
             if (!hidden) {
                 for (String supplyId : pData.uploadedSupplyIds) {
                     UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
-                    if (record != null && record.owner.equals(player.getUniqueId())) {
+                    if (record != null && record.owner.equals(ownerId)) {
                         record.uploadTime = nextUploadedSupplyTime();
                         recordsChanged = true;
                     }
@@ -938,7 +962,7 @@ public class GuiManager {
         }
 
         if (recordsChanged) saveUploadedSupplyRecords();
-        dataManager.savePlayerAsync(player.getUniqueId());
+        dataManager.saveOfflinePlayerAsync(pData);
         refreshOpenSupplyPages();
         return pData.uploadedSuppliesVisible;
     }
@@ -978,11 +1002,17 @@ public class GuiManager {
     }
 
     public void refreshOpenSupplyPages() {
+        plugin.getServer().getGlobalRegionScheduler().run(plugin, task -> refreshOpenSupplyPagesNow());
+    }
+
+    private void refreshOpenSupplyPagesNow() {
         String categoryPrefix = Kitloader.canonicalize(
                 org.bukkit.ChatColor.stripColor(plugin.getGuiTitle("category-prefix", "")));
         String supplyDisplay = org.bukkit.ChatColor.stripColor(
                 guiConfig.getString("categories_settings.supply.display", "补给盒子"));
         String publicSupplyPrefix = categoryPrefix + supplyDisplay + " - P";
+        String editSupplyPrefix = Kitloader.canonicalize(org.bukkit.ChatColor.stripColor(
+                plugin.getGuiTitle("edit-prefix", ""))) + "supply - P";
 
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             runPlayerGuiTask(viewer, () -> {
@@ -991,18 +1021,28 @@ public class GuiManager {
                 if (title == null) return;
 
                 int requestedPage = parseSupplyPage(title);
-                int maxPage = Math.max(0, (getVisibleSupplyEntries(viewer).size() - 1) / 36);
+                boolean editingSupply = title.startsWith(editSupplyPrefix);
+                int entryCount = editingSupply
+                        ? getEditableSupplyEntries().size() : getVisibleSupplyEntries(viewer).size();
+                int maxPage = Math.max(0, (entryCount - 1) / 36);
                 int page = Math.max(0, Math.min(requestedPage, maxPage));
                 if (title.startsWith(publicSupplyPrefix)) {
                     openCategoryGui(viewer, "supply", page);
                 } else if (title.contains("末影箱直存模式") && title.contains(" - P")) {
                     openSupplyEnderChestGui(viewer, page);
+                } else if (editingSupply) {
+                    openEditGui(viewer, "supply", page);
                 }
             });
         }
     }
 
     public void refreshUploadedSupplyManagementPage(UUID ownerId) {
+        plugin.getServer().getGlobalRegionScheduler().run(plugin,
+                task -> refreshUploadedSupplyManagementPageNow(ownerId));
+    }
+
+    private void refreshUploadedSupplyManagementPageNow(UUID ownerId) {
         Player owner = Bukkit.getPlayer(ownerId);
         if (owner == null || !owner.isOnline()) return;
         runPlayerGuiTask(owner, () -> {
@@ -1050,6 +1090,21 @@ public class GuiManager {
         return entries;
     }
 
+    private List<SupplyPageEntry> getEditableSupplyEntries() {
+        List<SupplyPageEntry> entries = new ArrayList<>();
+        for (ItemStack staticItem : getRawCategoryItems("supply")) {
+            entries.add(new SupplyPageEntry(null, staticItem.clone()));
+        }
+        synchronized (uploadedSupplyLock) {
+            List<UploadedSupplyRecord> records = new ArrayList<>(uploadedSupplyRecords.values());
+            records.sort(Comparator.comparingLong(record -> record.uploadTime));
+            for (UploadedSupplyRecord record : records) {
+                entries.add(new SupplyPageEntry(record.id, record.item.clone()));
+            }
+        }
+        return entries;
+    }
+
     public ItemStack getVisibleCategoryItem(Player viewer, String category, int page, int slotIndex) {
         List<ItemStack> items = getVisibleCategoryItems(viewer, category);
         int index = page * 36 + slotIndex;
@@ -1059,14 +1114,21 @@ public class GuiManager {
     }
 
     private void cacheSupplyPageView(Player player, int page) {
+        supplyPageViews.put(player.getUniqueId(), createSupplyPageView(page, getVisibleSupplyEntries(player)));
+    }
+
+    private void cacheSupplyEditPageView(Player player, int page, List<SupplyPageEntry> entries) {
+        supplyEditPageViews.put(player.getUniqueId(), createSupplyPageView(page, entries));
+    }
+
+    private SupplyPageView createSupplyPageView(int page, List<SupplyPageEntry> entries) {
         SupplyPageEntry[] pageItems = new SupplyPageEntry[36];
-        List<SupplyPageEntry> entries = getVisibleSupplyEntries(player);
         int startIndex = page * 36;
         for (int slot = 0; slot < pageItems.length; slot++) {
             int index = startIndex + slot;
             if (index < entries.size()) pageItems[slot] = entries.get(index);
         }
-        supplyPageViews.put(player.getUniqueId(), new SupplyPageView(page, pageItems));
+        return new SupplyPageView(page, pageItems);
     }
 
     public ItemStack getCachedVisibleSupplyItem(Player viewer, int page, int slot) {
@@ -1083,18 +1145,127 @@ public class GuiManager {
         }
     }
 
-    public boolean removeSupplyFromPublic(String supplyId, UUID owner) {
-        boolean removed;
+    public UploadedSupplyDetails getCachedVisibleUploadedSupplyDetails(Player viewer, int page, int slot) {
+        return getCachedUploadedSupplyDetails(supplyPageViews.get(viewer.getUniqueId()), page, slot, true);
+    }
+
+    public UploadedSupplyDetails getCachedEditableUploadedSupplyDetails(Player viewer, int page, int slot) {
+        return getCachedUploadedSupplyDetails(supplyEditPageViews.get(viewer.getUniqueId()), page, slot, false);
+    }
+
+    private UploadedSupplyDetails getCachedUploadedSupplyDetails(SupplyPageView view, int page, int slot,
+                                                                   boolean requireVisible) {
+        if (view == null || view.page != page || slot < 0 || slot >= view.items.length) return null;
+        SupplyPageEntry entry = view.items[slot];
+        if (entry == null || entry.uploadedSupplyId == null) return null;
+        return getUploadedSupplyDetails(entry.uploadedSupplyId, requireVisible);
+    }
+
+    public UploadedSupplyDetails getUploadedSupplyDetails(String supplyId) {
+        return getUploadedSupplyDetails(supplyId, false);
+    }
+
+    public UploadedSupplyDetails getEditableUploadedSupplyDetails(ItemStack item) {
+        UploadedSupplyMetadata metadata = readLegacyUploadedSupplyMetadata(item);
+        return metadata == null ? null : getUploadedSupplyDetails(metadata.id, false);
+    }
+
+    private UploadedSupplyDetails getUploadedSupplyDetails(String supplyId, boolean requireVisible) {
+        if (supplyId == null || supplyId.isBlank()) return null;
+        UUID ownerId;
+        long uploadTime;
+        boolean hidden;
+        ItemStack item;
         synchronized (uploadedSupplyLock) {
             UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
-            removed = record != null && record.owner.equals(owner);
-            if (removed) uploadedSupplyRecords.remove(supplyId);
+            if (record == null || (requireVisible && record.hidden)) return null;
+            ownerId = record.owner;
+            uploadTime = record.uploadTime;
+            hidden = record.hidden;
+            item = record.item.clone();
+        }
+        String ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
+        if (ownerName == null || ownerName.isBlank()) ownerName = ownerId.toString();
+        return new UploadedSupplyDetails(supplyId, ownerId, ownerName, uploadTime, hidden, item);
+    }
+
+    public String formatSupplyUploadTime(long uploadTime) {
+        return formatTime(uploadTime);
+    }
+
+    public ItemStack getEditableCategoryItem(Player viewer, String category, int page, int slot) {
+        if (!category.equals("supply")) return getCategoryItem(category, page, slot);
+        SupplyPageView view = supplyEditPageViews.get(viewer.getUniqueId());
+        if (view == null || view.page != page || slot < 0 || slot >= view.items.length) return null;
+        SupplyPageEntry entry = view.items[slot];
+        if (entry == null) return null;
+        if (entry.uploadedSupplyId == null) return entry.item.clone();
+        UploadedSupplyDetails details = getUploadedSupplyDetails(entry.uploadedSupplyId);
+        return details == null ? null : createSupplyEditDisplayItem(viewer, details);
+    }
+
+    public boolean removeUploadedSupplyEverywhere(String supplyId, UUID expectedOwner) {
+        if (supplyId == null || supplyId.isBlank() || expectedOwner == null) return false;
+        boolean recordExists;
+        synchronized (uploadedSupplyLock) {
+            UploadedSupplyRecord record = uploadedSupplyRecords.get(supplyId);
+            if (record != null && !record.owner.equals(expectedOwner)) return false;
+            recordExists = record != null;
+        }
+        if (recordExists) return removeUploadedSuppliesEverywhere(Set.of(supplyId)) > 0;
+
+        DataManager.PlayerData ownerData = dataManager.getPlayerData(expectedOwner);
+        if (ownerData == null) ownerData = dataManager.getOfflinePlayerData(expectedOwner);
+        if (ownerData == null) return false;
+        boolean removed = false;
+        for (int index = ownerData.uploadedSupplyIds.size() - 1; index >= 0; index--) {
+            if (!supplyId.equals(ownerData.uploadedSupplyIds.get(index))) continue;
+            ownerData.uploadedSupplyIds.remove(index);
+            if (index < ownerData.uploadedSupplies.size()) ownerData.uploadedSupplies.remove(index);
+            removed = true;
         }
         if (removed) {
-            saveUploadedSupplyRecords();
+            dataManager.saveOfflinePlayerAsync(ownerData);
             refreshOpenSupplyPages();
+            refreshUploadedSupplyManagementPage(expectedOwner);
         }
         return removed;
+    }
+
+    public int removeUploadedSuppliesEverywhere(Set<String> supplyIds) {
+        if (supplyIds == null || supplyIds.isEmpty()) return 0;
+        Map<UUID, Set<String>> idsByOwner = new LinkedHashMap<>();
+        int removedRecords = 0;
+        synchronized (uploadedSupplyLock) {
+            for (String supplyId : supplyIds) {
+                if (supplyId == null || supplyId.isBlank()) continue;
+                UploadedSupplyRecord record = uploadedSupplyRecords.remove(supplyId);
+                if (record == null) continue;
+                idsByOwner.computeIfAbsent(record.owner, ignored -> new HashSet<>()).add(supplyId);
+                removedRecords++;
+            }
+        }
+        if (removedRecords == 0) return 0;
+
+        for (Map.Entry<UUID, Set<String>> ownerEntry : idsByOwner.entrySet()) {
+            UUID ownerId = ownerEntry.getKey();
+            DataManager.PlayerData ownerData = dataManager.getPlayerData(ownerId);
+            if (ownerData == null) ownerData = dataManager.getOfflinePlayerData(ownerId);
+            if (ownerData != null) {
+                Set<String> ownerIds = ownerEntry.getValue();
+                for (int index = ownerData.uploadedSupplyIds.size() - 1; index >= 0; index--) {
+                    if (!ownerIds.contains(ownerData.uploadedSupplyIds.get(index))) continue;
+                    ownerData.uploadedSupplyIds.remove(index);
+                    if (index < ownerData.uploadedSupplies.size()) ownerData.uploadedSupplies.remove(index);
+                }
+                dataManager.saveOfflinePlayerAsync(ownerData);
+            }
+        }
+
+        saveUploadedSupplyRecords();
+        refreshOpenSupplyPages();
+        for (UUID ownerId : idsByOwner.keySet()) refreshUploadedSupplyManagementPage(ownerId);
+        return removedRecords;
     }
 
     public ItemStack createSupplyDisplayItem(ItemStack item, String... operationLore) {
@@ -1117,6 +1288,81 @@ public class GuiManager {
         return displayItem;
     }
 
+    public ItemStack createPublicSupplyDisplayItem(Player viewer, ItemStack item,
+                                                    UploadedSupplyDetails details, String actionLore) {
+        return createPublicSupplyDisplayItem(viewer, item, details, actionLore, true);
+    }
+
+    public ItemStack createPublicSupplyDisplayItem(Player viewer, ItemStack item,
+                                                    UploadedSupplyDetails details, String actionLore,
+                                                    boolean showManagementAction) {
+        List<String> lore = new ArrayList<>();
+        if (details != null) {
+            lore.add("&#95A5A6&l上传者: &f&l" + details.ownerName());
+            lore.add("&#95A5A6&l上传时间: &f&l" + formatTime(details.uploadTime()));
+            if (showManagementAction && viewer.isOp() && plugin.isBypassWhitelisted(viewer)) {
+                lore.add("&#F2C94C&l[✎] 右键 &f&l管理、重命名或删除");
+            }
+        }
+        lore.add(actionLore);
+        return createSupplyDisplayItem(item, lore.toArray(String[]::new));
+    }
+
+    private ItemStack createSupplyEditDisplayItem(Player viewer, UploadedSupplyDetails details) {
+        List<String> lore = new ArrayList<>();
+        lore.add("&#95A5A6&l上传者: &f&l" + details.ownerName());
+        lore.add("&#95A5A6&l上传时间: &f&l" + formatTime(details.uploadTime()));
+        lore.add(details.hidden()
+                ? "&#FF5E62&l[已隐藏] &f&l当前不显示在公共补给页"
+                : "&#00B09B&l[公开中] &f&l当前显示在公共补给页");
+        if (viewer.isOp() && plugin.isBypassWhitelisted(viewer)) {
+            lore.add("&#F2C94C&l[✎] 右键 &f&l打开玩家补给管理");
+            lore.add("&#FF5E62&l[✖] 从本页移除 &f&l同步删除玩家上传记录");
+        } else {
+            lore.add("&#95A5A6&l仅白名单 OP 可修改玩家上传补给");
+        }
+
+        ItemStack display = createSupplyDisplayItem(details.item(), lore.toArray(String[]::new));
+        if (display == null || !display.hasItemMeta()) return display;
+        ItemMeta meta = display.getItemMeta();
+        meta.getPersistentDataContainer().set(supplyIdKey, PersistentDataType.STRING, details.supplyId());
+        meta.getPersistentDataContainer().set(supplyOwnerKey, PersistentDataType.STRING, details.ownerId().toString());
+        meta.getPersistentDataContainer().set(supplyHiddenKey, PersistentDataType.BYTE,
+                details.hidden() ? (byte) 1 : (byte) 0);
+        display.setItemMeta(meta);
+        return display;
+    }
+
+    public void sanitizeSupplyEditTakenItems(Player player) {
+        Inventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            if (readLegacyUploadedSupplyMetadata(item) == null) continue;
+            inventory.setItem(slot, cleanSupplyEditItem(item));
+        }
+        ItemStack cursor = player.getItemOnCursor();
+        if (readLegacyUploadedSupplyMetadata(cursor) != null) {
+            player.setItemOnCursor(cleanSupplyEditItem(cursor));
+        }
+    }
+
+    private ItemStack cleanSupplyEditItem(ItemStack item) {
+        ItemStack clean = createUploadedSupplyDeliveryCopy(item);
+        if (clean == null || !clean.hasItemMeta()) return clean;
+        ItemMeta meta = clean.getItemMeta();
+        if (meta.hasLore()) {
+            List<String> lore = new ArrayList<>(meta.getLore());
+            lore.removeIf(this::isSupplyOperationLore);
+            while (!lore.isEmpty() && Kitloader.canonicalize(org.bukkit.ChatColor.stripColor(
+                    lore.get(lore.size() - 1))).isBlank()) {
+                lore.remove(lore.size() - 1);
+            }
+            meta.setLore(lore.isEmpty() ? null : lore);
+            clean.setItemMeta(meta);
+        }
+        return clean;
+    }
+
     private boolean isSupplyOperationLore(String line) {
         String plain = Kitloader.canonicalize(org.bukkit.ChatColor.stripColor(line == null ? "" : line));
         return plain.contains("其他玩家可以在公共补给页看见")
@@ -1126,7 +1372,15 @@ public class GuiManager {
                 || plain.contains("直接获取物品")
                 || plain.contains("仅你自己可见")
                 || plain.contains("仅可在本管理页使用")
-                || plain.contains("已从公共补给页移除");
+                || plain.contains("已从公共补给页移除")
+                || plain.startsWith("上传者:")
+                || plain.startsWith("上传时间:")
+                || plain.contains("管理、重命名或删除")
+                || plain.contains("打开玩家补给管理")
+                || plain.contains("同步删除玩家上传记录")
+                || plain.contains("仅白名单 OP 可修改")
+                || plain.contains("当前不显示在公共补给页")
+                || plain.contains("当前显示在公共补给页");
     }
 
     private ItemStack createBtn(Material mat, String name, String lore) {
@@ -1147,7 +1401,10 @@ public class GuiManager {
     public void openCustomSupplyEditGui(Player player) {
         runPlayerGuiTask(player, () -> {
             DataManager.PlayerData pData = dataManager.getPlayerData(player.getUniqueId());
-            if (pData.editSession == null) pData.editSession = new DataManager.EditSession();
+            if (pData.editSession == null) {
+                pData.editSession = new DataManager.EditSession();
+                pData.editSession.name = player.getName();
+            }
 
             Inventory inv = Bukkit.createInventory(null, 54, Kitloader.color("&#FF0099&l[+] &#FF1188&l自&#FF2277&l定&#FF3366&l义&#FF4455&l补&#FF5544&l给&#FF5544&l盒"));
             for (int i = 0; i < 27; i++) {
@@ -1244,6 +1501,11 @@ public class GuiManager {
             player.openInventory(inv);
             checkAndClearNavigating(player);
         });
+    }
+
+    public void openPublicKitEditGui(Player player, DataManager.PublicKit pk, boolean fromCache, int returnPage) {
+        setPublicCategoryReturnPage(player.getUniqueId(), returnPage);
+        openPublicKitEditGui(player, pk, fromCache);
     }
 
     public void openPublicKitEditGui(Player player, DataManager.PublicKit pk, boolean fromCache) {
@@ -1548,7 +1810,8 @@ public class GuiManager {
                     ItemStack sourceItem = allItems[startIndex + i];
                     ItemStack displayItem;
                     if (category.equals("supply")) {
-                        displayItem = createSupplyDisplayItem(sourceItem,
+                        UploadedSupplyDetails details = getCachedVisibleUploadedSupplyDetails(player, page, i);
+                        displayItem = createPublicSupplyDisplayItem(player, sourceItem, details,
                                 "&#00B09B&l[▶] 左键/Shift &f&l直接获取物品");
                     } else {
                         displayItem = sourceItem.clone();
@@ -1606,19 +1869,39 @@ public class GuiManager {
     }
 
     public void openEditGui(Player player, String category, int page) {
+        int requestedPage = Math.max(0, page);
         long navigationVersion = beginPageNavigation(player);
         runPlayerGuiTask(player, () -> {
             if (!isLatestPageNavigation(player, navigationVersion)) return;
-            String title = plugin.getGuiTitle("edit-prefix", "") + category + " - P" + (page + 1);
+            String title = plugin.getGuiTitle("edit-prefix", "") + category + " - P" + (requestedPage + 1);
             Inventory inv = Bukkit.createInventory(null, 54, title);
-            List<?> itemsRaw = guiConfig.getList("categories." + category);
-            if (itemsRaw != null) {
-                int startIndex = page * 36;
+            if (category.equals("supply")) {
+                List<SupplyPageEntry> entries = getEditableSupplyEntries();
+                cacheSupplyEditPageView(player, requestedPage, entries);
+                int startIndex = requestedPage * 36;
                 for (int i = 0; i < 36; i++) {
-                    if (startIndex + i < itemsRaw.size() && itemsRaw.get(startIndex + i) != null) inv.setItem(i, ((ItemStack) itemsRaw.get(startIndex + i)).clone());
+                    int index = startIndex + i;
+                    if (index >= entries.size()) break;
+                    SupplyPageEntry entry = entries.get(index);
+                    if (entry.uploadedSupplyId == null) {
+                        inv.setItem(i, entry.item.clone());
+                    } else {
+                        UploadedSupplyDetails details = getUploadedSupplyDetails(entry.uploadedSupplyId);
+                        if (details != null) inv.setItem(i, createSupplyEditDisplayItem(player, details));
+                    }
+                }
+            } else {
+                List<?> itemsRaw = guiConfig.getList("categories." + category);
+                if (itemsRaw != null) {
+                    int startIndex = requestedPage * 36;
+                    for (int i = 0; i < 36; i++) {
+                        if (startIndex + i < itemsRaw.size() && itemsRaw.get(startIndex + i) != null) {
+                            inv.setItem(i, ((ItemStack) itemsRaw.get(startIndex + i)).clone());
+                        }
+                    }
                 }
             }
-            if (page > 0) inv.setItem(45, createBtn(Material.ARROW, plugin.getGuiTitle("btn-prev-page", ""), ""));
+            if (requestedPage > 0) inv.setItem(45, createBtn(Material.ARROW, plugin.getGuiTitle("btn-prev-page", ""), ""));
             inv.setItem(53, createBtn(Material.ARROW, plugin.getGuiTitle("btn-next-page", ""), ""));
 
             fillBeautifulGradient(inv, 0, 35);
@@ -1629,8 +1912,22 @@ public class GuiManager {
         });
     }
 
-    public void saveCategoryItems(String category, int page, ItemStack[] pageContents) {
+    public void saveCategoryItems(Player editor, String category, int page, ItemStack[] pageContents) {
+        ItemStack[] contentsSnapshot = new ItemStack[36];
+        for (int slot = 0; slot < contentsSnapshot.length; slot++) {
+            contentsSnapshot[slot] = slot < pageContents.length && pageContents[slot] != null
+                    ? pageContents[slot].clone() : null;
+        }
+        SupplyPageView editView = category.equals("supply")
+                ? supplyEditPageViews.get(editor.getUniqueId()) : null;
+        boolean canManageUploadedSupplies = editor.isOp() && plugin.isBypassWhitelisted(editor);
+        if (category.equals("supply")) sanitizeSupplyEditTakenItems(editor);
+
         plugin.getServer().getAsyncScheduler().runNow(plugin, task -> {
+            if (category.equals("supply")) {
+                saveSupplyCategoryPage(page, contentsSnapshot, editView, canManageUploadedSupplies);
+                return;
+            }
             synchronized (uploadedSupplyLock) {
                 List<ItemStack> allItems = new ArrayList<>();
                 List<?> rawList = guiConfig.getList("categories." + category);
@@ -1638,7 +1935,7 @@ public class GuiManager {
 
                 int startIndex = page * 36;
                 while (allItems.size() < startIndex + 36) allItems.add(null);
-                for (int i = 0; i < 36; i++) allItems.set(startIndex + i, pageContents[i] != null ? pageContents[i].clone() : null);
+                for (int i = 0; i < 36; i++) allItems.set(startIndex + i, contentsSnapshot[i]);
 
                 List<ItemStack> compacted = new ArrayList<>();
                 int removedItems = 0;
@@ -1657,6 +1954,48 @@ public class GuiManager {
                 try { guiConfig.save(guiFile); loadGuiConfig(); } catch (IOException ignored) {}
             }
         });
+    }
+
+    private void saveSupplyCategoryPage(int page, ItemStack[] pageContents,
+                                        SupplyPageView editView, boolean canManageUploadedSupplies) {
+        List<ItemStack> currentStatic = getRawCategoryItems("supply");
+        List<ItemStack> pageStatic = new ArrayList<>();
+        Set<String> expectedUploadedIds = new HashSet<>();
+        Set<String> presentUploadedIds = new HashSet<>();
+
+        if (editView != null && editView.page == page) {
+            for (SupplyPageEntry entry : editView.items) {
+                if (entry != null && entry.uploadedSupplyId != null) {
+                    expectedUploadedIds.add(entry.uploadedSupplyId);
+                }
+            }
+        }
+
+        for (ItemStack pageItem : pageContents) {
+            if (pageItem == null || pageItem.getType().isAir()) continue;
+            UploadedSupplyMetadata metadata = readLegacyUploadedSupplyMetadata(pageItem);
+            if (metadata != null) {
+                presentUploadedIds.add(metadata.id);
+                continue;
+            }
+            ItemStack staticItem = pageItem.clone();
+            CustomNamePolicy.CleanupResult cleanup = CustomNamePolicy.sanitizeItem(staticItem);
+            if (!cleanup.removeRoot()) pageStatic.add(staticItem);
+        }
+
+        int startIndex = Math.max(0, page) * 36;
+        int replaceStart = Math.min(startIndex, currentStatic.size());
+        int replaceEnd = Math.min(startIndex + 36, currentStatic.size());
+        List<ItemStack> updatedStatic = new ArrayList<>(currentStatic.subList(0, replaceStart));
+        updatedStatic.addAll(pageStatic);
+        updatedStatic.addAll(currentStatic.subList(replaceEnd, currentStatic.size()));
+
+        if (canManageUploadedSupplies) {
+            expectedUploadedIds.removeAll(presentUploadedIds);
+            removeUploadedSuppliesEverywhere(expectedUploadedIds);
+        }
+        saveSupplyState(updatedStatic);
+        refreshOpenSupplyPages();
     }
 
     public void openPlayerKitListGui(Player player, List<String> kitNames) {
@@ -1830,8 +2169,9 @@ public class GuiManager {
             for (int i = 0; i < 36; i++) {
                 if (startIndex + i < allItems.length && allItems[startIndex + i] != null) {
                     ItemStack sourceItem = allItems[startIndex + i];
-                    ItemStack displayItem = createSupplyDisplayItem(sourceItem,
-                            "&#00B09B&l[▶] 左键/Shift &f&l直接存入下方的末影箱");
+                    UploadedSupplyDetails details = getCachedVisibleUploadedSupplyDetails(player, page, i);
+                    ItemStack displayItem = createPublicSupplyDisplayItem(player, sourceItem, details,
+                            "&#00B09B&l[▶] 左键/Shift &f&l直接存入下方的末影箱", false);
                     inv.setItem(i, displayItem);
                 }
             }
@@ -1914,6 +2254,18 @@ public class GuiManager {
     }
 
     private record CleanupStats(boolean changed, int removedItems) {
+    }
+
+    public record UploadedSupplyDetails(String supplyId, UUID ownerId, String ownerName,
+                                        long uploadTime, boolean hidden, ItemStack item) {
+        public UploadedSupplyDetails {
+            item = item == null ? null : item.clone();
+        }
+
+        @Override
+        public ItemStack item() {
+            return item == null ? null : item.clone();
+        }
     }
 
     private static final class UploadedSupplyRecord {

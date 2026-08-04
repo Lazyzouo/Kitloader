@@ -48,6 +48,7 @@ messages:
   update_manual: "Kitloader {version} is available. Download it from the official Releases page: {url}"
   update_failed: "Kitloader automatic update failed: {reason}. Download it manually from: {url}"
   reload_success: "{prefix}&a&lReload complete &#34495E&l> &#95A5A6&lConfiguration and data were reloaded."
+  reload_failed: "{prefix}&c&lReload failed &#34495E&l> &#95A5A6&lThe configuration could not be migrated or read. The original file was not overwritten; check the server console."
   no_permission: "{prefix}&c&lPermission denied &#34495E&l> &#95A5A6&lYou cannot use this command."
   player_only: "{prefix}&c&lPlayer only &#34495E&l> &#95A5A6&lThis action must be performed in game."
   data_loading: "{prefix}&e&lPlease wait &#34495E&l> &#95A5A6&lYour data has not finished loading."
@@ -153,6 +154,8 @@ messages:
   regear_name_updated: "{prefix}&a&lThe preview name was updated. Save to commit it."
   regear_save_success: "{prefix}&a&lSaved &#34495E&l> &#95A5A6&lSynchronized {player}'s supply and public record."
   regear_delete_success: "{prefix}&a&lDeleted &#34495E&l> &#95A5A6&lRemoved {box} from {player}."
+  regear_visibility_public: "{prefix}&a&lVisibility updated &#34495E&l> &#95A5A6&lAll supplies uploaded by {player} are now public."
+  regear_visibility_hidden: "{prefix}&e&lVisibility updated &#34495E&l> &#95A5A6&lAll supplies uploaded by {player} were removed from public supply pages."
   admin_help_menu:
     - "&#34495E&l&m----------------&f&#F2C94C&l * &#95A5A6&l&m----------------"
     - "&#00D2FF&l  [K] Kitloader &7&lv{version} &8&l| &7&lAuthor &f&l{author} &8&l(Admin)"

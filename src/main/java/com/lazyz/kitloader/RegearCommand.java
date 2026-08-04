@@ -45,6 +45,7 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
     private static final int PREVIOUS_SLOT = 45;
     private static final int INFO_SLOT = 47;
     private static final int CLOSE_SLOT = 49;
+    private static final int VISIBILITY_SLOT = 51;
     private static final int NEXT_SLOT = 53;
 
     private final Kitloader plugin;
@@ -58,6 +59,49 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         this.plugin = plugin;
         this.data = data;
         this.gui = gui;
+    }
+
+    public void openFromCategory(Player admin, String supplyId, int returnPage) {
+        openFromSupplySource(admin, supplyId, returnPage, false);
+    }
+
+    public void openFromEditSupply(Player admin, String supplyId, int returnPage) {
+        openFromSupplySource(admin, supplyId, returnPage, true);
+    }
+
+    private void openFromSupplySource(Player admin, String supplyId, int returnPage, boolean returnToEditor) {
+        if (!admin.isOp() || !plugin.isBypassWhitelisted(admin)) {
+            plugin.sendMsg(admin, "whitelist_command_denied");
+            return;
+        }
+        GuiManager.UploadedSupplyDetails details = gui.getUploadedSupplyDetails(supplyId);
+        if (details == null) {
+            plugin.sendMsg(admin, "regear_supply_missing");
+            openSupplySource(admin, returnPage, returnToEditor);
+            return;
+        }
+
+        DataManager.PlayerData targetData = data.getPlayerData(details.ownerId());
+        if (targetData == null) targetData = data.getOfflinePlayerData(details.ownerId());
+        if (targetData == null) {
+            plugin.sendMsg(admin, "regear_supply_missing");
+            return;
+        }
+        gui.ensureUploadedSupplyMetadata(details.ownerId(), targetData);
+
+        closeSession(admin, true);
+        UUID existingEditor = targetEditors.putIfAbsent(details.ownerId(), admin.getUniqueId());
+        if (existingEditor != null && !existingEditor.equals(admin.getUniqueId())) {
+            plugin.sendMsg(admin, "regear_target_busy", "player", details.ownerName());
+            return;
+        }
+
+        AdminSession session = new AdminSession(details.ownerId(), details.ownerName(), targetData);
+        session.directSupplyId = supplyId;
+        session.categoryReturnPage = Math.max(0, returnPage);
+        session.returnToSupplyEditor = returnToEditor;
+        sessions.put(admin.getUniqueId(), session);
+        openDirectManagement(admin);
     }
 
     @Override
@@ -188,6 +232,14 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                         + "\n&#95A5A6&lUUID: &f&l" + session.targetId
                         + "\n&#95A5A6&l补给数量: &f&l" + targetData.uploadedSupplies.size()));
         inventory.setItem(CLOSE_SLOT, button(Material.IRON_DOOR, "&#FF5E62&l[✖] 关闭管理", ""));
+        inventory.setItem(VISIBILITY_SLOT, button(
+                targetData.uploadedSuppliesVisible ? Material.LIME_DYE : Material.GRAY_DYE,
+                targetData.uploadedSuppliesVisible
+                        ? "&#00B09B&l[公开中] 一键隐藏全部"
+                        : "&#FF5E62&l[已隐藏] 一键公开全部",
+                targetData.uploadedSuppliesVisible
+                        ? "&#95A5A6&l点击后，将从所有玩家的公共补给页移除"
+                        : "&#95A5A6&l点击后，所有玩家可重新在公共补给页看见"));
         if (targetData.uploadedSupplies.size() > (page + 1) * PAGE_SIZE) {
             inventory.setItem(NEXT_SLOT, button(Material.ARROW, "&#00B09B&l下一页 ▶", ""));
         }
@@ -250,12 +302,60 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         ConfirmDeleteHolder holder = new ConfirmDeleteHolder(
                 admin.getUniqueId(), session.targetId, supplyId, returnPage);
         Inventory inventory = Bukkit.createInventory(holder, 27,
-                Kitloader.color("&#ED213A&l确认删除 Regear 补给"));
+                Kitloader.color("&#ED213A&l确认删除玩家上传补给"));
         holder.bind(inventory);
         inventory.setItem(11, button(Material.LIME_STAINED_GLASS_PANE, "&#00B09B&l[✔] 永久删除", ""));
         inventory.setItem(15, button(Material.RED_STAINED_GLASS_PANE, "&#FF5E62&l[✖] 取消", ""));
         fill(inventory, 0, 26);
         openManaged(admin, inventory);
+    }
+
+    private void openDirectManagement(Player admin) {
+        AdminSession session = sessions.get(admin.getUniqueId());
+        if (session == null || session.directSupplyId == null) return;
+        GuiManager.UploadedSupplyDetails details = gui.getUploadedSupplyDetails(session.directSupplyId);
+        if (details == null || !details.ownerId().equals(session.targetId)) {
+            plugin.sendMsg(admin, "regear_supply_missing");
+            returnToSupplySource(admin, session);
+            return;
+        }
+
+        DirectSupplyHolder holder = new DirectSupplyHolder(
+                admin.getUniqueId(), session.targetId, session.directSupplyId);
+        Inventory inventory = Bukkit.createInventory(holder, 27,
+                Kitloader.color("&#FF0099&l玩家上传补给管理"));
+        holder.bind(inventory);
+        inventory.setItem(4, button(Material.BOOK, "&#F2C94C&l[?] 上传信息",
+                "&#95A5A6&l上传者: &f&l" + details.ownerName()
+                        + "\n&#95A5A6&lUUID: &f&l" + details.ownerId()
+                        + "\n&#95A5A6&l上传时间: &f&l" + gui.formatSupplyUploadTime(details.uploadTime())));
+        inventory.setItem(13, gui.createSupplyDisplayItem(details.item(),
+                details.hidden()
+                        ? "&#FF5E62&l[已隐藏] &f&l当前不在公共补给页显示"
+                        : "&#00B09B&l[公开中] &f&l当前显示在公共补给页"));
+        inventory.setItem(18, button(Material.ARROW,
+                session.returnToSupplyEditor
+                        ? "&#00B09B&l◀ 返回上一级"
+                        : "&#00B09B&l◀ 返回补给分类",
+                "&#95A5A6&l返回第 " + (session.categoryReturnPage + 1) + " 页"));
+        inventory.setItem(22, button(Material.NAME_TAG, "&#F2C94C&l[✎] 修改补给名称",
+                "&#95A5A6&l修改后同步玩家与公共补给页"));
+        inventory.setItem(26, button(Material.RED_STAINED_GLASS_PANE, "&#FF5E62&l[✖] 永久删除",
+                "&#95A5A6&l进入二次确认页面"));
+        fill(inventory, 0, 26);
+        openManaged(admin, inventory);
+    }
+
+    private void returnToSupplySource(Player admin, AdminSession session) {
+        int returnPage = session.categoryReturnPage == null ? 0 : session.categoryReturnPage;
+        boolean returnToEditor = session.returnToSupplyEditor;
+        closeSession(admin, false);
+        openSupplySource(admin, returnPage, returnToEditor);
+    }
+
+    private void openSupplySource(Player admin, int returnPage, boolean returnToEditor) {
+        if (returnToEditor) gui.openEditGui(admin, "supply", returnPage);
+        else gui.openCategoryGui(admin, "supply", returnPage);
     }
 
     private void openManaged(Player player, Inventory inventory) {
@@ -276,7 +376,8 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         AdminSession activeSession = sessions.get(admin.getUniqueId());
         if (!regearHolder.adminId.equals(admin.getUniqueId())
                 || activeSession == null || !regearHolder.targetId.equals(activeSession.targetId)
-                || !plugin.isBypassWhitelisted(admin)) {
+                || !plugin.isBypassWhitelisted(admin)
+                || (activeSession != null && activeSession.directSupplyId != null && !admin.isOp())) {
             event.setCancelled(true);
             closeSession(admin, true);
             admin.closeInventory();
@@ -288,8 +389,34 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
             handleListClick(admin, event, listHolder);
         } else if (holder instanceof SupplyEditorHolder) {
             handleEditorClick(admin, event);
+        } else if (holder instanceof DirectSupplyHolder) {
+            handleDirectManagementClick(admin, event);
         } else if (holder instanceof ConfirmDeleteHolder confirmHolder) {
             handleDeleteClick(admin, event, confirmHolder);
+        }
+    }
+
+    private void handleDirectManagementClick(Player admin, InventoryClickEvent event) {
+        event.setCancelled(true);
+        int rawSlot = event.getRawSlot();
+        if (rawSlot < 0 || rawSlot >= event.getView().getTopInventory().getSize()) return;
+        if (!event.getClick().isLeftClick()) return;
+        AdminSession session = sessions.get(admin.getUniqueId());
+        if (session == null || session.directSupplyId == null) return;
+
+        if (rawSlot == 18) {
+            returnToSupplySource(admin, session);
+        } else if (rawSlot == 22) {
+            session.awaitingName = true;
+            transitioning.add(admin.getUniqueId());
+            admin.closeInventory();
+            admin.getScheduler().run(plugin, task -> transitioning.remove(admin.getUniqueId()),
+                    () -> transitioning.remove(admin.getUniqueId()));
+            plugin.sendMsg(admin, "regear_name_prompt", "max", String.valueOf(
+                    CustomNamePolicy.maxVisibleLength(plugin, CustomNamePolicy.NameType.SUPPLY)));
+        } else if (rawSlot == 26) {
+            openDeleteConfirmation(admin, session.directSupplyId,
+                    session.categoryReturnPage == null ? 0 : session.categoryReturnPage);
         }
     }
 
@@ -303,6 +430,15 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         } else if (slot == CLOSE_SLOT) {
             closeSession(admin, false);
             admin.closeInventory();
+        } else if (slot == VISIBILITY_SLOT) {
+            AdminSession session = sessions.get(admin.getUniqueId());
+            if (session == null) return;
+            DataManager.PlayerData targetData = currentTargetData(session);
+            boolean visible = gui.toggleUploadedSuppliesVisibility(session.targetId, targetData);
+            gui.refreshUploadedSupplyManagementPage(session.targetId);
+            plugin.sendMsg(admin, visible ? "regear_visibility_public" : "regear_visibility_hidden",
+                    "player", session.targetName);
+            openList(admin, holder.page);
         } else if (slot == NEXT_SLOT) {
             openList(admin, holder.page + 1);
         } else if (slot >= 0 && slot < PAGE_SIZE) {
@@ -432,29 +568,31 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         int rawSlot = event.getRawSlot();
         if (rawSlot < 0 || rawSlot >= event.getView().getTopInventory().getSize()) return;
         if (!event.getClick().isLeftClick()) return;
+        AdminSession session = sessions.get(admin.getUniqueId());
+        if (session == null) return;
         if (rawSlot == 15) {
-            openList(admin, holder.returnPage);
+            if (session.directSupplyId != null) openDirectManagement(admin);
+            else openList(admin, holder.returnPage);
             return;
         }
         if (rawSlot != 11) return;
 
-        AdminSession session = sessions.get(admin.getUniqueId());
-        if (session == null) return;
         DataManager.PlayerData targetData = currentTargetData(session);
         int index = findSupplyIndex(targetData, holder.supplyId);
         if (index < 0) {
             plugin.sendMsg(admin, "regear_supply_missing");
         } else {
-            ItemStack removed = targetData.uploadedSupplies.remove(index);
-            targetData.uploadedSupplyIds.remove(index);
-            data.saveOfflinePlayerAsync(targetData);
-            gui.removeSupplyFromPublic(holder.supplyId, session.targetId);
-            gui.refreshUploadedSupplyManagementPage(session.targetId);
-            String name = removed.hasItemMeta() && removed.getItemMeta().hasDisplayName()
-                    ? ChatColor.stripColor(removed.getItemMeta().getDisplayName()) : "未命名潜影盒";
-            plugin.sendMsg(admin, "regear_delete_success", "player", session.targetName, "box", name);
+            ItemStack removed = targetData.uploadedSupplies.get(index);
+            if (gui.removeUploadedSupplyEverywhere(holder.supplyId, session.targetId)) {
+                String name = removed.hasItemMeta() && removed.getItemMeta().hasDisplayName()
+                        ? ChatColor.stripColor(removed.getItemMeta().getDisplayName()) : "未命名潜影盒";
+                plugin.sendMsg(admin, "regear_delete_success", "player", session.targetName, "box", name);
+            } else {
+                plugin.sendMsg(admin, "regear_supply_missing");
+            }
         }
-        openList(admin, holder.returnPage);
+        if (session.directSupplyId != null) returnToSupplySource(admin, session);
+        else openList(admin, holder.returnPage);
     }
 
     private void saveEditor(Player admin, AdminSession session) {
@@ -527,7 +665,8 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
     public void onRenameChat(AsyncPlayerChatEvent event) {
         Player admin = event.getPlayer();
         AdminSession session = sessions.get(admin.getUniqueId());
-        if (session == null || !session.awaitingName || session.editor == null) return;
+        if (session == null || !session.awaitingName
+                || (session.editor == null && session.directSupplyId == null)) return;
         event.setCancelled(true);
 
         String newName = event.getMessage().trim();
@@ -544,12 +683,49 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
                     task -> CustomNamePolicy.sendValidationFailure(plugin, admin, nameValidation), null);
             return;
         }
-        session.editor.displayName = coloredName;
+        if (session.directSupplyId != null && session.editor == null) {
+            session.awaitingName = false;
+            admin.getScheduler().run(plugin, task -> renameDirectSupply(admin, session, coloredName), null);
+        } else {
+            session.editor.displayName = coloredName;
+            session.awaitingName = false;
+            admin.getScheduler().run(plugin, task -> {
+                plugin.sendMsg(admin, "regear_name_updated");
+                openEditor(admin);
+            }, null);
+        }
+    }
+
+    private void renameDirectSupply(Player admin, AdminSession session, String coloredName) {
+        if (sessions.get(admin.getUniqueId()) != session || session.directSupplyId == null) return;
+        DataManager.PlayerData targetData = currentTargetData(session);
+        int index = findSupplyIndex(targetData, session.directSupplyId);
+        if (index < 0) {
+            session.awaitingName = false;
+            plugin.sendMsg(admin, "regear_supply_missing");
+            returnToSupplySource(admin, session);
+            return;
+        }
+
+        ItemStack updated = targetData.uploadedSupplies.get(index).clone();
+        ItemMeta meta = updated.getItemMeta();
+        if (meta == null) {
+            session.awaitingName = false;
+            plugin.sendMsg(admin, "regear_invalid_supply");
+            openDirectManagement(admin);
+            return;
+        }
+        meta.setDisplayName(coloredName);
+        updated.setItemMeta(meta);
+        gui.stripUploadedSupplyMetadata(updated);
+        targetData.uploadedSupplies.set(index, updated);
+        data.saveOfflinePlayerAsync(targetData);
+        gui.updateUploadedSupply(session.directSupplyId, session.targetId,
+                !targetData.uploadedSuppliesVisible, updated);
+        gui.refreshUploadedSupplyManagementPage(session.targetId);
         session.awaitingName = false;
-        admin.getScheduler().run(plugin, task -> {
-            plugin.sendMsg(admin, "regear_name_updated");
-            openEditor(admin);
-        }, null);
+        plugin.sendMsg(admin, "regear_name_updated");
+        openDirectManagement(admin);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -692,6 +868,9 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         private int page;
         private EditorSession editor;
         private volatile boolean awaitingName;
+        private String directSupplyId;
+        private Integer categoryReturnPage;
+        private boolean returnToSupplyEditor;
 
         private AdminSession(UUID targetId, String targetName, DataManager.PlayerData targetData) {
             this.targetId = targetId;
@@ -759,6 +938,15 @@ public class RegearCommand implements CommandExecutor, TabCompleter, Listener {
         private final String supplyId;
 
         private SupplyEditorHolder(UUID adminId, UUID targetId, String supplyId) {
+            super(adminId, targetId);
+            this.supplyId = supplyId;
+        }
+    }
+
+    private static final class DirectSupplyHolder extends RegearHolder {
+        private final String supplyId;
+
+        private DirectSupplyHolder(UUID adminId, UUID targetId, String supplyId) {
             super(adminId, targetId);
             this.supplyId = supplyId;
         }

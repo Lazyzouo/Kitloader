@@ -35,10 +35,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Listener {
     private static final int LIST_PAGE_SIZE = 45;
-    private static final int SAVE_EXIT_SLOT = 45;
-    private static final int DISCARD_EXIT_SLOT = 47;
+    private static final int RETURN_SLOT = 45;
     private static final int SWITCH_VIEW_SLOT = 49;
-    private static final int DISCARD_RETURN_SLOT = 53;
 
     private final Kitloader plugin;
     private final Map<UUID, EditSession> sessions = new ConcurrentHashMap<>();
@@ -183,8 +181,6 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
             return;
         }
 
-        ItemStack[] adminSnapshot = snapshotPlayerInventory(admin);
-        ItemStack adminCursor = cloneItem(admin.getItemOnCursor());
         target.getScheduler().run(plugin, task -> {
             if (!target.isOnline()) {
                 targetEditors.remove(target.getUniqueId(), admin.getUniqueId());
@@ -206,7 +202,7 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
                 }
 
                 EditSession session = new EditSession(admin.getUniqueId(), target.getUniqueId(), target.getName(),
-                        returnPage, targetInventory, targetEnder, adminSnapshot, adminCursor);
+                        returnPage, targetInventory, targetEnder);
                 sessions.put(admin.getUniqueId(), session);
                 openEditor(admin, session, View.PLAYER_INVENTORY);
                 startRealtimeSync(session);
@@ -238,23 +234,16 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
             inventory.setItem(40, cloneAt(items, 40));
             inventory.setItem(42, button(Material.ARMOR_STAND, "&#F2C94C&l装备栏",
                     "&#95A5A6&l从左到右：头盔、胸甲、护腿、靴子、副手"));
+            inventory.setItem(RETURN_SLOT, button(Material.ARROW, "&#00B09B&l◀ 返回玩家列表",
+                    "&#95A5A6&l当前修改已实时同步"));
             inventory.setItem(SWITCH_VIEW_SLOT, button(Material.ENDER_CHEST, "&#8E2DE2&l查看并编辑末影箱",
-                    "&#95A5A6&l保留当前背包修改并切换页面"));
+                    "&#95A5A6&l当前修改已实时同步"));
         } else {
             ItemStack[] items = session.workingEnder;
             for (int slot = 0; slot < 27; slot++) inventory.setItem(slot, cloneAt(items, slot));
-            inventory.setItem(SWITCH_VIEW_SLOT, button(Material.CHEST, "&#00B09B&l保留修改并返回背包",
-                    "&#95A5A6&l保留当前末影箱修改并切换页面"));
+            inventory.setItem(RETURN_SLOT, button(Material.ARROW, "&#00B09B&l◀ 返回背包与装备",
+                    "&#95A5A6&l当前修改已实时同步"));
         }
-
-        inventory.setItem(SAVE_EXIT_SLOT, button(Material.LIME_CONCRETE, "&#00B09B&l保存并退出",
-                "&#95A5A6&l提交背包与末影箱的全部修改"));
-        inventory.setItem(DISCARD_EXIT_SLOT, button(Material.RED_CONCRETE, "&#FF5E62&l不保存并退出",
-                "&#95A5A6&l恢复双方打开界面前的物品状态"));
-        inventory.setItem(DISCARD_RETURN_SLOT, button(Material.ARROW, "&#F2C94C&l不保存并返回",
-                view == View.PLAYER_INVENTORY
-                        ? "&#95A5A6&l放弃全部修改并返回玩家列表"
-                        : "&#95A5A6&l放弃本次末影箱修改并返回背包"));
         fillEditorDecoration(inventory, view);
 
         if (admin.getOpenInventory().getTopInventory().getHolder() instanceof EditorHolder) {
@@ -341,8 +330,7 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         }
 
         if (rawSlot < topSize) {
-            if (rawSlot == SAVE_EXIT_SLOT || rawSlot == DISCARD_EXIT_SLOT
-                    || rawSlot == SWITCH_VIEW_SLOT || rawSlot == DISCARD_RETURN_SLOT) {
+            if (rawSlot == RETURN_SLOT || rawSlot == SWITCH_VIEW_SLOT) {
                 event.setCancelled(true);
                 handleEditorControl(admin, session, editorHolder, rawSlot, event.getView().getTopInventory());
                 return;
@@ -387,7 +375,7 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
 
         EditSession session = sessions.get(admin.getUniqueId());
         if (session != null && session.id.equals(holder.sessionId)) {
-            discardEntireSession(admin, session, false, false);
+            finishSession(admin, session, holder.view, event.getView().getTopInventory(), false);
         }
     }
 
@@ -406,12 +394,13 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player leaving = event.getPlayer();
-        EditSession adminSession = sessions.remove(leaving.getUniqueId());
+        EditSession adminSession = sessions.get(leaving.getUniqueId());
         if (adminSession != null) {
-            targetEditors.remove(adminSession.targetId, adminSession.adminId);
-            applyPlayerInventory(leaving, adminSession.originalAdminInventory);
-            leaving.setItemOnCursor(cloneItem(adminSession.originalAdminCursor));
-            restoreTarget(adminSession);
+            Inventory top = leaving.getOpenInventory().getTopInventory();
+            if (top.getHolder() instanceof EditorHolder holder && holder.sessionId.equals(adminSession.id)) {
+                captureView(adminSession, holder.view, top, false);
+            }
+            finishSession(leaving, adminSession, null, null, false);
         }
 
         UUID adminId = targetEditors.remove(leaving.getUniqueId());
@@ -419,48 +408,32 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         EditSession targetSession = sessions.remove(adminId);
         if (targetSession == null) return;
 
-        applyPlayerInventory(leaving, targetSession.originalTargetInventory);
-        leaving.getEnderChest().setContents(cloneItems(targetSession.originalTargetEnder));
+        targetSession.inventoryRevision.incrementAndGet();
+        targetSession.enderRevision.incrementAndGet();
         Player admin = Bukkit.getPlayer(adminId);
         if (admin != null) {
             admin.getScheduler().run(plugin, task -> {
                 transitioning.add(adminId);
                 admin.closeInventory();
-                restoreAdminAfterClose(admin, targetSession.originalAdminInventory,
-                        targetSession.originalAdminCursor,
-                        () -> plugin.sendMsg(admin, "inv_target_offline", "player", targetSession.targetName));
+                plugin.sendMsg(admin, "inv_target_offline", "player", targetSession.targetName);
             }, null);
         }
     }
 
     private void handleEditorControl(Player admin, EditSession session, EditorHolder holder,
                                      int slot, Inventory topInventory) {
-        if (slot == SAVE_EXIT_SLOT) {
-            captureView(session, holder.view, topInventory, false);
-            saveAndExit(admin, session);
-            return;
-        }
-        if (slot == DISCARD_EXIT_SLOT) {
-            discardEntireSession(admin, session, true, false);
-            return;
-        }
         if (slot == SWITCH_VIEW_SLOT) {
+            if (holder.view != View.PLAYER_INVENTORY) return;
             captureView(session, holder.view, topInventory, true);
-            if (holder.view == View.PLAYER_INVENTORY) {
-                session.viewStartTarget = cloneItems(session.workingEnder);
-                session.viewStartAdminInventory = snapshotPlayerInventory(admin);
-                session.viewStartAdminCursor = cloneItem(admin.getItemOnCursor());
-                openEditor(admin, session, View.ENDER_CHEST);
-            } else {
-                openEditor(admin, session, View.PLAYER_INVENTORY);
-            }
+            openEditor(admin, session, View.ENDER_CHEST);
             return;
         }
 
         if (holder.view == View.ENDER_CHEST) {
-            rollbackEnderView(admin, session);
+            captureView(session, holder.view, topInventory, true);
+            openEditor(admin, session, View.PLAYER_INVENTORY);
         } else {
-            discardEntireSession(admin, session, true, true);
+            finishSession(admin, session, holder.view, topInventory, true);
         }
     }
 
@@ -593,78 +566,29 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         });
     }
 
-    private void saveAndExit(Player admin, EditSession session) {
-        if (!sessions.remove(admin.getUniqueId(), session)) return;
-        targetEditors.remove(session.targetId, session.adminId);
-        Player target = Bukkit.getPlayer(session.targetId);
-        if (target != null) {
-            ItemStack[] inventory = cloneItems(session.workingInventory);
-            ItemStack[] ender = cloneItems(session.workingEnder);
-            target.getScheduler().run(plugin, task -> {
-                applyPlayerInventory(target, inventory);
-                target.getEnderChest().setContents(cloneItems(ender));
-                target.updateInventory();
-            }, null);
+    private void finishSession(Player admin, EditSession session, View currentView,
+                               Inventory topInventory, boolean returnToList) {
+        if (currentView != null && topInventory != null) {
+            captureView(session, currentView, topInventory, false);
         }
-
-        transitioning.add(admin.getUniqueId());
-        admin.closeInventory();
-        plugin.sendMsg(admin, "inv_saved", "player", session.targetName);
-    }
-
-    private void discardEntireSession(Player admin, EditSession session, boolean closeInventory, boolean returnToList) {
         if (!sessions.remove(admin.getUniqueId(), session)) return;
         targetEditors.remove(session.targetId, session.adminId);
-        restoreTarget(session);
-
-        if (closeInventory) {
+        commitTarget(session);
+        if (returnToList && admin.isOnline()) {
             transitioning.add(admin.getUniqueId());
-            admin.closeInventory();
+            openPlayerList(admin, session.returnPage);
         }
-        plugin.sendMsg(admin, "inv_discarded", "player", session.targetName);
-        restoreAdminAfterClose(admin, session.originalAdminInventory, session.originalAdminCursor,
-                returnToList ? () -> openPlayerList(admin, session.returnPage) : null);
     }
 
-    private void rollbackEnderView(Player admin, EditSession session) {
-        session.enderRevision.incrementAndGet();
-        session.workingEnder = cloneItems(session.viewStartTarget);
-        Player target = Bukkit.getPlayer(session.targetId);
-        if (target != null) {
-            ItemStack[] snapshot = cloneItems(session.workingEnder);
-            target.getScheduler().run(plugin, task -> {
-                if (sessions.get(session.adminId) != session) return;
-                target.getEnderChest().setContents(cloneItems(snapshot));
-                target.updateInventory();
-            }, null);
-        }
-
-        transitioning.add(admin.getUniqueId());
-        admin.closeInventory();
-        restoreAdminAfterClose(admin, session.viewStartAdminInventory, session.viewStartAdminCursor,
-                () -> openEditor(admin, session, View.PLAYER_INVENTORY));
-    }
-
-    private void restoreAdminAfterClose(Player admin, ItemStack[] inventory, ItemStack cursor, Runnable afterRestore) {
-        ItemStack[] snapshot = cloneItems(inventory);
-        ItemStack cursorSnapshot = cloneItem(cursor);
-        applyPlayerInventory(admin, snapshot);
-        admin.setItemOnCursor(cloneItem(cursorSnapshot));
-        admin.getScheduler().run(plugin, task -> {
-            if (!admin.isOnline()) return;
-            applyPlayerInventory(admin, snapshot);
-            admin.setItemOnCursor(cloneItem(cursorSnapshot));
-            if (afterRestore != null) afterRestore.run();
-        }, null);
-    }
-
-    private void restoreTarget(EditSession session) {
+    private void commitTarget(EditSession session) {
         session.inventoryRevision.incrementAndGet();
         session.enderRevision.incrementAndGet();
+        session.inventoryWritePending.set(false);
+        session.enderWritePending.set(false);
         Player target = Bukkit.getPlayer(session.targetId);
         if (target == null) return;
-        ItemStack[] inventory = cloneItems(session.originalTargetInventory);
-        ItemStack[] ender = cloneItems(session.originalTargetEnder);
+        ItemStack[] inventory = cloneItems(session.workingInventory);
+        ItemStack[] ender = cloneItems(session.workingEnder);
         target.getScheduler().run(plugin, task -> {
             applyPlayerInventory(target, inventory);
             target.getEnderChest().setContents(cloneItems(ender));
@@ -676,14 +600,12 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         for (EditSession session : new ArrayList<>(sessions.values())) {
             Player admin = Bukkit.getPlayer(session.adminId);
             if (admin != null) {
-                applyPlayerInventory(admin, session.originalAdminInventory);
-                admin.setItemOnCursor(cloneItem(session.originalAdminCursor));
+                Inventory top = admin.getOpenInventory().getTopInventory();
+                if (top.getHolder() instanceof EditorHolder holder && holder.sessionId.equals(session.id)) {
+                    captureView(session, holder.view, top, false);
+                }
             }
-            Player target = Bukkit.getPlayer(session.targetId);
-            if (target != null) {
-                applyPlayerInventory(target, session.originalTargetInventory);
-                target.getEnderChest().setContents(cloneItems(session.originalTargetEnder));
-            }
+            commitTarget(session);
         }
         sessions.clear();
         targetEditors.clear();
@@ -789,10 +711,6 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         private final UUID targetId;
         private final String targetName;
         private final int returnPage;
-        private final ItemStack[] originalTargetInventory;
-        private final ItemStack[] originalTargetEnder;
-        private final ItemStack[] originalAdminInventory;
-        private final ItemStack originalAdminCursor;
         private final AtomicLong inventoryRevision = new AtomicLong();
         private final AtomicLong enderRevision = new AtomicLong();
         private final AtomicBoolean inventoryWritePending = new AtomicBoolean();
@@ -801,28 +719,17 @@ public class InventoryAdminCommand implements CommandExecutor, TabCompleter, Lis
         private volatile ItemStack[] workingEnder;
         private volatile ItemStack[] lastTargetInventory;
         private volatile ItemStack[] lastTargetEnder;
-        private volatile ItemStack[] viewStartTarget;
-        private volatile ItemStack[] viewStartAdminInventory;
-        private volatile ItemStack viewStartAdminCursor;
 
         private EditSession(UUID adminId, UUID targetId, String targetName, int returnPage,
-                            ItemStack[] targetInventory, ItemStack[] targetEnder,
-                            ItemStack[] adminInventory, ItemStack adminCursor) {
+                            ItemStack[] targetInventory, ItemStack[] targetEnder) {
             this.adminId = adminId;
             this.targetId = targetId;
             this.targetName = targetName;
             this.returnPage = returnPage;
-            this.originalTargetInventory = cloneItems(targetInventory);
-            this.originalTargetEnder = cloneItems(targetEnder);
-            this.originalAdminInventory = cloneItems(adminInventory);
-            this.originalAdminCursor = cloneItem(adminCursor);
             this.workingInventory = cloneItems(targetInventory);
             this.workingEnder = cloneItems(targetEnder);
             this.lastTargetInventory = cloneItems(targetInventory);
             this.lastTargetEnder = cloneItems(targetEnder);
-            this.viewStartTarget = cloneItems(targetEnder);
-            this.viewStartAdminInventory = cloneItems(adminInventory);
-            this.viewStartAdminCursor = cloneItem(adminCursor);
         }
     }
 }

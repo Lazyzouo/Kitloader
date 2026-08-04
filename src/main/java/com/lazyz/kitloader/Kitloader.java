@@ -8,10 +8,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 public class Kitloader extends JavaPlugin {
 
@@ -29,10 +29,12 @@ public class Kitloader extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        if (!loadAndMigrateConfiguration()) {
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         languageManager = new LanguageManager(this);
         activeLanguageManager = languageManager;
-        migrateLegacyRestrictedWorldName();
-        migrateLegacyInventoryWhitelist();
 
         dataManager = new DataManager(this);
         guiManager = new GuiManager(this, dataManager);
@@ -61,7 +63,8 @@ public class Kitloader extends JavaPlugin {
             getCommand("regear").setTabCompleter(regearCommand);
         }
 
-        getServer().getPluginManager().registerEvents(new KitListener(this, dataManager, guiManager), this);
+        getServer().getPluginManager().registerEvents(
+                new KitListener(this, dataManager, guiManager, regearCommand), this);
         getServer().getPluginManager().registerEvents(inventoryAdminCommand, this);
         getServer().getPluginManager().registerEvents(regearCommand, this);
 
@@ -206,34 +209,6 @@ public class Kitloader extends JavaPlugin {
         return guiManager;
     }
 
-    private void migrateLegacyRestrictedWorldName() {
-        List<String> worlds = new ArrayList<>(getConfig().getStringList("settings.single-use-worlds"));
-        boolean hasOverworld = worlds.stream().anyMatch(world -> world.equalsIgnoreCase("overworld"));
-        if (hasOverworld) return;
-
-        for (int index = 0; index < worlds.size(); index++) {
-            if (!worlds.get(index).equalsIgnoreCase("overworld2")) continue;
-            worlds.set(index, "overworld");
-            getConfig().set("settings.single-use-worlds", worlds);
-            saveConfig();
-            return;
-        }
-    }
-
-    private void migrateLegacyInventoryWhitelist() {
-        if (!getConfig().contains("settings.inventory-editor.whitelist")) return;
-
-        List<String> bypassWhitelist = new ArrayList<>(getConfig().getStringList("settings.bypass-whitelist"));
-        for (String legacyEntry : getConfig().getStringList("settings.inventory-editor.whitelist")) {
-            boolean alreadyPresent = bypassWhitelist.stream()
-                    .anyMatch(entry -> entry.equalsIgnoreCase(legacyEntry));
-            if (!alreadyPresent) bypassWhitelist.add(legacyEntry);
-        }
-        getConfig().set("settings.bypass-whitelist", bypassWhitelist);
-        getConfig().set("settings.inventory-editor", null);
-        saveConfig();
-    }
-
     public int enforceKitShulkerLimit(ItemStack[] items) {
         if (items == null) return 0;
         int max = Math.max(0, getConfig().getInt("settings.shulker-limits.kit-save-max", 3));
@@ -330,13 +305,25 @@ public class Kitloader extends JavaPlugin {
         if (modifiedInv) sendMsg(p, "shulker_limit_inventory", "max", String.valueOf(invLimit));
     }
 
-    public void reloadPlugin() {
+    public boolean reloadPlugin() {
         if (!getDataFolder().exists()) getDataFolder().mkdirs();
-        File configFile = new File(getDataFolder(), "config.yml");
-        if (!configFile.exists()) saveDefaultConfig();
-        reloadConfig();
+        saveDefaultConfig();
+        if (!loadAndMigrateConfiguration()) return false;
         languageManager.reload();
         guiManager.loadGuiConfig();
+        return true;
+    }
+
+    private boolean loadAndMigrateConfiguration() {
+        try {
+            new ConfigMigrator(this).migrate();
+            reloadConfig();
+            return true;
+        } catch (ConfigMigrator.ConfigMigrationException exception) {
+            getLogger().log(Level.SEVERE,
+                    "Unable to update config.yml safely. The existing file was not overwritten.", exception);
+            return false;
+        }
     }
 
     public String getGuiTitle(String key, String def) {

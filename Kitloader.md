@@ -2,7 +2,7 @@
 
 > **Official project statement:** Kitloader is fully open source. It contains no backdoor, telemetry, or remote collection of server data. Kits, uploaded supplies, and configuration data remain on the server that creates them. Update checks and optional downloads use only this project's GitHub Release endpoint. Obtain releases only from [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases).
 
-**Version:** 2.0.13
+**Version:** 2.0.17
 
 **Tested baseline:** Paper/Folia 1.21.11  
 **Java:** 21  
@@ -14,10 +14,12 @@ Install exactly one official asset from [Releases](https://github.com/Lazyzouo/K
 
 | Package | Default `language` | Audience |
 | --- | --- | --- |
-| `Kitloader-2.0.13-en.us.jar` | `en_US` | English servers |
-| `Kitloader-2.0.13-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
+| `Kitloader-2.0.17-en.us.jar` | `en_US` | English servers |
+| `Kitloader-2.0.17-zh.cn.jar` | `zh_CN` | Simplified Chinese servers |
 
 Both packages contain the same code and behavior. They differ only in the official default language/configuration preset. Do not install both at once. `src/main/resources/config.yml` is intentionally a local runtime file and is never published. The repository stores official presets under `presets/`.
+
+Existing servers never need to delete `config.yml` during an update. Kitloader reads the internal `config-version` at startup and on `/kitloader reload`, migrates legacy paths in order, and adds only missing official keys. Existing values, lists, unknown custom keys, and parsed comments are retained. Before a changed file is written, the original is copied to `plugins/Kitloader/config-backups/`; a temporary file is then atomically moved into place. A newer unsupported schema or failed migration is never overwritten.
 
 All chat, help-menu, and feedback text sent to players is normalized to left alignment at send time. Leading presentation spaces before the first visible character are ignored even when they come from an existing local configuration or a hot reload; color and formatting codes are preserved. Console output, including the startup banner, keeps its existing layout.
 
@@ -34,6 +36,7 @@ All chat, help-menu, and feedback text sent to players is normalized to left ali
 | `/kitloader whitelist <add|remove|list>` | `kitloader.admin` | Manages `bypass-whitelist` |
 | `/kitloader ecmax <1-27>` | `kitloader.admin` | Updates Ender Chest limit and dynamic UI capacity |
 | `/kitloader invmax <1-36>` | `kitloader.admin` | Updates carried and saved-Kit shulker limits |
+| `/kitloader edit <category>` | `kitloader.admin` | Edits a category; the `supply` editor also shows synchronized player uploads |
 | `/inv [player]` | OP plus `bypass-whitelist` | Live inventory/equipment/Ender Chest editor for online players |
 | `/regear <player> list` | `bypass-whitelist` | Manages any known player's uploaded supplies, including hidden supplies |
 
@@ -43,6 +46,7 @@ In `single-use-worlds`, non-whitelisted players may use only `/kit`, `/kit list`
 
 | Option | Official default | Administrator impact |
 | --- | ---: | --- |
+| `config-version` | `1` | Internal migration schema maintained automatically; do not edit |
 | `updates.enabled` | `true` | Checks official Release at startup |
 | `updates.auto-download` | `true` | Stages the verified matching JAR for next restart |
 | `settings.max-kits` | `9` | Personal Kit maximum per player |
@@ -79,20 +83,26 @@ The complete option reference is in [docs/CONFIGURATION.md](docs/CONFIGURATION.m
 - Content matching prevents duplicate shared Kits even if names or item display names change.
 - Upload counts are enforced per player. Shared Kit management allows edit, rename, publication, and deletion.
 - Leaving the shared-Kit editor now compares the working copy: unchanged edits return directly, while changed edits offer save/discard controls; ESC/E opens a discard confirmation instead of closing every Kitloader UI.
+- A shared-Kit editor opened from a public category page returns to that same page after closing, saving, discarding, renaming, or deleting.
 
 ### Custom supplies
 
 - Supply content policy is hot-reloadable: the official defaults require 27 occupied slots, reject all-one-type contents, and allow one similar type in at most 16 occupied stacks. The numeric values are clamped to 1-27. Nested boxes, per-player limits, and equivalent uploads remain rejected; renaming does not bypass grouping.
 - Existing uploads that violate the current policy are removed from player data and public records during startup, load, or `/kitloader reload`. Existing over-limit supply names are reset to a safe configured default without deleting the box.
 - Uploads and public supply entries are ordered by upload time.
+- A new upload uses the player's in-game ID as its default box name until the player explicitly renames it. Public uploaded supplies show uploader name and upload date/time.
 - A hidden supply is removed immediately from every public page, including the owner's public page, and cannot be claimed there. It remains editable in uploaded-supply management.
 - Publishing a hidden supply appends it at the end of the public supply sequence and refreshes open supply pages.
+- `/kitloader edit supply` displays static supplies together with all player uploads, including hidden ones. Removing a player upload from this editor permanently removes the matching owner record and refreshes uploaded-supply management, public pages, and other open supply editors.
+- An OP who is also in `bypass-whitelist` can right-click a player upload on a public supply page or supply editor to rename it or delete it through a second confirmation page. Static supplies are not exposed to this player-record management flow.
+- The Regear target-management page can hide or republish all supplies belonging to that player in one action. Player data, public pages, the owner's uploaded-supply page, and open supply editors refresh together.
+- Direct management opened from `/kitloader edit supply` returns to the OP supply editor and its original page after returning, renaming, deletion confirmation, or a stale-record recovery.
 
 ### Ender Chest and shulker limits
 
 - `enderchest-max` controls both allowed shulker box count and dynamically visible storage slots. Values above nine use the larger UI without forcing a 54-slot UI when nine slots are configured.
 - `/kitloader invmax` synchronizes carried and personal-Kit save limits. Players in `bypass-whitelist` bypass only the carried `inventory-max`; Ender Chest and saved-Kit limits still apply.
-- The live `/inv` editor synchronizes target inventory and Ender Chest changes while it remains open.
+- The live `/inv` editor has only return and Ender Chest navigation controls. Every inventory, equipment, and Ender Chest edit is synchronized and preserved immediately; closing or leaving the session never rolls it back.
 
 ### Item editor
 
@@ -122,7 +132,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 > **官方项目声明：**Kitloader 是彻底开源的项目，不含后门、遥测或远程收集服务器数据的机制。Kit、上传补给和配置数据只保存在创建它们的服务器上。更新检查及可选下载只会使用本项目的 GitHub Release 接口。请只从 [Lazyzouo/Kitloader Releases](https://github.com/Lazyzouo/Kitloader/releases) 获取发布包。
 
-**版本：**2.0.13
+**版本：**2.0.17
 
 **测试基线：**Paper/Folia 1.21.11  
 **Java：**21  
@@ -134,10 +144,12 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 包 | 默认 `language` | 面向服务器 |
 | --- | --- | --- |
-| `Kitloader-2.0.13-en.us.jar` | `en_US` | 英文服务器 |
-| `Kitloader-2.0.13-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
+| `Kitloader-2.0.17-en.us.jar` | `en_US` | 英文服务器 |
+| `Kitloader-2.0.17-zh.cn.jar` | `zh_CN` | 简体中文服务器 |
 
 两个包的源码和功能完全一致，只是官方默认语言/配置预设不同。不要同时安装两个包。`src/main/resources/config.yml` 被视为本地运行文件，不会发布；仓库中的官方预设位于 `presets/`。
+
+已有服务器更新时无需删除 `config.yml`。Kitloader 会在启动和执行 `/kitloader reload` 时读取内部 `config-version`，依次迁移旧路径，并且只补入缺失的官方配置键；用户已有值、列表、未知自定义节点及已解析注释都会保留。配置发生变化时，原文件会先备份到 `plugins/Kitloader/config-backups/`，再通过临时文件原子替换。遇到当前不支持的更高结构版本或迁移失败时，绝不会覆盖原文件。
 
 所有发送给玩家的聊天、帮助菜单及操作提示文本都会在发送时统一左对齐。即使前导空格来自现有本地配置或热重载内容，首个可见字符前的排版空白也会被忽略；颜色及格式代码会完整保留。服务器后台输出（包括启动横幅）保持现有布局。
 
@@ -154,6 +166,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 | `/kitloader whitelist <add|remove|list>` | `kitloader.admin` | 管理 `bypass-whitelist` |
 | `/kitloader ecmax <1-27>` | `kitloader.admin` | 设置末影箱限制与动态 UI 容量 |
 | `/kitloader invmax <1-36>` | `kitloader.admin` | 同步携带与保存 Kit 的潜影盒限制 |
+| `/kitloader edit <分类>` | `kitloader.admin` | 编辑分类；`supply` 编辑页同时显示并同步玩家上传补给 |
 | `/inv [玩家]` | OP 且在 `bypass-whitelist` | 实时编辑在线玩家背包、装备和末影箱 |
 | `/regear <玩家> list` | `bypass-whitelist` | 管理任意已知玩家的上传补给，包括隐藏补给 |
 
@@ -163,6 +176,7 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 
 | 选项 | 官方默认值 | 管理员影响 |
 | --- | ---: | --- |
+| `config-version` | `1` | 由插件自动维护的内部迁移版本，请勿修改 |
 | `updates.enabled` | `true` | 启动时检测官方 Release |
 | `updates.auto-download` | `true` | 下载已验证的对应 JAR，供下次重启安装 |
 | `settings.max-kits` | `9` | 每人个人 Kit 上限 |
@@ -199,20 +213,26 @@ Every functional update must increment `build.gradle` version, update `CHANGELOG
 - 内容匹配会阻止相同共享 Kit，即使修改 Kit 名称或物品显示名也不能绕过。
 - 上传数量按玩家限制；管理页面可编辑、重命名、公开及删除。
 - 离开共享 Kit 编辑页时会比较工作副本：无改动直接返回，有改动则可保存或放弃；按 ESC/E 会打开放弃确认，不再直接关闭全部 Kitloader UI。
+- 从公共分类页进入共享 Kit 编辑器后，关闭、保存、放弃、重命名或删除都会返回进入时的同一页。
 
 ### 自定义补给
 
 - 补给内容规则可热重载：官方默认至少填入 27 格、拒绝整盒全同、同类最多占用 16 组，数字会限制在 1-27。盒中盒、每人上限和内容重复仍会被拒绝，重命名不能绕过同类分组。
 - 启动、加载或执行 `/kitloader reload` 时，会从玩家数据和公共记录删除不符合当前规则的旧补给；旧补给名称若超过当前上限，只会重置为安全默认名，不会删除整盒物品。
 - 上传补给与公共补给按上传时间排序。
+- 新上传补给在玩家未主动改名时默认使用该玩家的游戏 ID；公共玩家补给会显示上传者和上传年月日时间。
 - 隐藏补给会立即从所有公共页移除，包括上传者自己的公共页，且不能在公共页领取；仍可在已上传补给管理页编辑。
 - 重新公开时会排列到公共补给末尾，并刷新已打开的补给页。
+- `/kitloader edit supply` 会同时显示静态补给和全部玩家上传补给（包括隐藏补给）。从该编辑页移除玩家补给会永久删除对应玩家记录，并刷新“已上传补给”、公共补给页和其他已打开的补给编辑页。
+- 同时为 OP 且在 `bypass-whitelist` 内的管理员，可在公共补给页或补给编辑页右键玩家上传补给进行重命名，或通过二次确认永久删除；静态补给不会进入玩家记录管理流程。
+- Regear 目标玩家管理页可一键隐藏或重新公开该玩家的全部补给；玩家数据、公共补给页、玩家“已上传补给”页及已打开的补给编辑页会同步刷新。
+- 从 `/kitloader edit supply` 进入直接管理后，返回、重命名、删除确认及记录失效恢复都会回到 OP 补给编辑页和原来的页码。
 
 ### 末影箱与潜影盒限制
 
 - `enderchest-max` 同时控制允许的潜影盒数量和动态显示的储物格。数值大于 9 时使用大界面；设置为 9 不会错误切换为 54 格 UI。
 - `/kitloader invmax` 会同步携带与个人 Kit 保存的潜影盒限制。`bypass-whitelist` 玩家仅绕过随身背包的 `inventory-max`，末影箱与 Kit 保存限制仍然生效。
-- 实时 `/inv` 编辑器在打开期间会同步目标玩家背包和末影箱的变更。
+- 实时 `/inv` 编辑器只保留返回与末影箱导航按钮。背包、装备和末影箱的每项修改都会立即同步并保留，关闭或离开会话不会回滚。
 
 ### 物品编辑
 

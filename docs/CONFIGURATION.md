@@ -8,6 +8,7 @@
 
 | Path | Default | Effect |
 | --- | ---: | --- |
+| `config-version` | `1` | Internal migration schema maintained by Kitloader; do not edit |
 | `language` | package-specific | `en_US` or `zh_CN` runtime text |
 | `updates.enabled` | `true` | Checks official GitHub Releases at startup |
 | `updates.auto-download` | `true` | Stages a verified matching-language JAR for next restart |
@@ -32,6 +33,7 @@
 
 | 路径 | 默认值 | 作用 |
 | --- | ---: | --- |
+| `config-version` | `1` | 由 Kitloader 自动维护的内部迁移版本，请勿修改 |
 | `language` | 按包决定 | `en_US` 或 `zh_CN` 运行时文字 |
 | `updates.enabled` | `true` | 启动时检测官方 GitHub Releases |
 | `updates.auto-download` | `true` | 下载已验证的对应语言包，供下次重启安装 |
@@ -53,6 +55,12 @@
 | `settings.shulker-limits.inventory-max` | `3` | 默认可携带潜影盒上限 |
 | `settings.shulker-limits.enderchest-max` | `9` | 末影箱潜影盒上限与动态 UI 容量 |
 | `settings.enchantments.rejection-cooldown-ms` | `1500` | 附魔冲突拒绝反馈的冷却时间 |
+
+## Automatic schema migration / 自动配置迁移
+
+At startup and before `/kitloader reload`, Kitloader compares the server's `config-version` with the bundled official schema. Missing keys are added recursively, while existing values, lists, unknown extension keys, and parsed comments remain unchanged. Renamed or moved keys use ordered migrations. Any changed file is backed up under `plugins/Kitloader/config-backups/` before a temporary file atomically replaces it. A malformed file or a schema newer than the running plugin is never overwritten.
+
+服务器启动及执行 `/kitloader reload` 前，Kitloader 会比较服务器配置与发行包内的 `config-version`。缺失键会递归补入，已有值、列表、未知扩展键和已解析注释保持不变；重命名或移动的键则按版本顺序迁移。发生更改时，原配置会先备份到 `plugins/Kitloader/config-backups/`，然后才由临时文件原子替换。格式损坏或结构版本高于当前插件的配置绝不会被覆盖。
 
 ## Hot-reloadable policies and fixed safety limits / 可热重载规则与固定安全线
 
