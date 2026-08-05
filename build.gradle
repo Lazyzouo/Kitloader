@@ -5,7 +5,7 @@ plugins {
 group = 'com.lazyz'
 version = '2.0.17'
 def pluginAuthor = 'Lazyz'
-def paperApi = 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
+def paperApi = 'io.papermc.paper:paper-api:26.2.build.91-stable'
 
 repositories {
     mavenCentral()
